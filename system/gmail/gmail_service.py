@@ -105,8 +105,8 @@ async def call_external_service(email_data: Dict) -> Dict:
         logger.info(f"Successfully generated draft reply for: {email_data.get('id', 'no id')}")
         
         # Return the response containing the body field
-        
-        return response_data
+    
+        return response_data["data"]
         
     except Exception as e:
         logger.error(f"Error generating draft response: {e}")
