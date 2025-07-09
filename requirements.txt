@@ -7,3 +7,6 @@ pinecone
 pinecone-text
 motor
 python-multipart
+google-auth-oauthlib
+google-api-python-client
+google-genai
