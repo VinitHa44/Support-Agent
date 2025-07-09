@@ -16,6 +16,7 @@ from system.src.app.usecases.query_docs_usecases.query_docs_usecase import (
 
 
 class GenerateDraftsController:
+
     def __init__(
         self,
         generate_drafts_usecase: GenerateDraftsUsecase = Depends(
@@ -41,13 +42,24 @@ class GenerateDraftsController:
         rocket_docs_task = self.query_docs_usecase.query_docs(
             rocket_docs_query, settings.ROCKET_DOCS_PINECONE_INDEX_NAME
         )
-
         dataset_task = self.query_docs_usecase.query_docs(
             dataset_query, settings.PINECONE_INDEX_NAME, categories=categories
         )
-
         rocket_docs_response, dataset_response = await asyncio.gather(
             rocket_docs_task, dataset_task
+        )
+
+        generate_drafts_query = {
+            "from": categorization_response.get("from"),
+            "subject": categorization_response.get("subject"),
+            "body": categorization_response.get("body"),
+            "rocket_docs_response": rocket_docs_response,
+            "dataset_response": dataset_response,
+        }
+        generate_drafts_response = (
+            await self.generate_drafts_usecase.generate_drafts(
+                generate_drafts_query
+            )
         )
 
         response = {
