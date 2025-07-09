@@ -18,7 +18,7 @@ class GeminiService:
         self.base_url = settings.GEMINI_BASE_URL
         self.completion_endpoint = settings.GEMINI_COMPLETION_ENDPOINT
         self.gemini_model = settings.GEMINI_MODEL
-        self.gemini_api_key = settings.GOOGLE_API_KEY
+        self.gemini_api_key = settings.GEMINI_API_KEY
         self.llm_usage_repository = llm_usage_repository
 
     async def completions(
@@ -39,7 +39,7 @@ class GeminiService:
         headers = {
             "Content-Type": "application/json",
         }
-        print(settings.GOOGLE_API_KEY)
+        print(settings.GEMINI_API_KEY)
         payload = {
             "systemInstruction": {"parts": [{"text": system_prompt}]},
             "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
