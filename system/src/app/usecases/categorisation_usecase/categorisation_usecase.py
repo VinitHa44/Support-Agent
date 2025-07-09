@@ -76,6 +76,7 @@ class CategorizationUsecase:
             # Return simplified format as requested
             return {
                 "categories": processed_result["categories"],
+                "new_categories": processed_result["new_categories"],
                 "doc_search_query": processed_result["query_for_search"] or "",
                 "from": email_data.get("sender", ""),
                 "body": email_data.get("body", ""),
