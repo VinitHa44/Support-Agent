@@ -1,20 +1,96 @@
 import re
 import base64
+import json
+import os
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 
 from system.src.app.prompts.categorization_prompt import (
     CATEGORIZATION_SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
-    DEFAULT_CATEGORIES,
-    DEFAULT_CATEGORY_DESCRIPTIONS,
 )
 
 
 class CategorizationHelper:
     def __init__(self):
-        self.categories = DEFAULT_CATEGORIES
-        self.category_descriptions = DEFAULT_CATEGORY_DESCRIPTIONS
+        self.categories_file_path = "session-data/categories.json"
+        self.categories, self.category_descriptions = self._load_categories()
+
+    def _load_categories(self) -> tuple[List[str], Dict[str, str]]:
+        """
+        Load categories and descriptions from JSON file.
+        
+        :return: Tuple of (categories_list, category_descriptions_dict)
+        """
+        try:
+            with open(self.categories_file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            categories_dict = data.get('categories', {})
+            categories_list = list(categories_dict.keys())
+            
+            return categories_list, categories_dict
+            
+        except FileNotFoundError:
+            print(f"Warning: Categories file {self.categories_file_path} not found. Using fallback categories.")
+            # Fallback categories if file not found
+            fallback_categories = [
+                "billing_financial_management",
+                "ai_performance_quality", 
+                "platform_stability_technical"
+            ]
+            fallback_descriptions = {
+                "billing_financial_management": "Customer billing and payment issues",
+                "ai_performance_quality": "AI model performance and quality issues", 
+                "platform_stability_technical": "Technical platform stability issues"
+            }
+            return fallback_categories, fallback_descriptions
+            
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error parsing categories JSON file: {str(e)}"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error loading categories: {str(e)}"
+            )
+
+    def _save_categories(self) -> None:
+        """
+        Save current categories and descriptions to JSON file.
+        """
+        try:
+            data = {
+                "categories": self.category_descriptions
+            }
+            
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(self.categories_file_path), exist_ok=True)
+            
+            with open(self.categories_file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+                
+            print(f"Categories updated and saved to {self.categories_file_path}")
+            
+        except Exception as e:
+            print(f"Warning: Failed to save categories to file: {str(e)}")
+
+    def add_new_category(self, category_name: str, category_description: str) -> None:
+        """
+        Add a new category and save to JSON file.
+        
+        :param category_name: Name of the new category
+        :param category_description: Description of the new category
+        """
+        if category_name not in self.categories:
+            self.categories.append(category_name)
+            self.category_descriptions[category_name] = category_description
+            self._save_categories()
+            print(f"Added new category: {category_name}")
+        else:
+            print(f"Category {category_name} already exists, skipping addition")
 
     def validate_email_data(self, email_data: Dict[str, Any]) -> None:
         """
@@ -166,10 +242,19 @@ class CategorizationHelper:
             
             # Validate new category fields if UNKNOWN is present
             if "UNKNOWN" in valid_categories:
-                if not categorization_result.get('new_category_name'):
-                    categorization_result['new_category_name'] = "uncategorized_query"
-                if not categorization_result.get('new_category_description'):
-                    categorization_result['new_category_description'] = "Query that doesn't fit existing categories"
+                new_category_name = categorization_result.get('new_category_name')
+                new_category_description = categorization_result.get('new_category_description')
+                
+                if not new_category_name:
+                    new_category_name = "uncategorized_query"
+                if not new_category_description:
+                    new_category_description = "Query that doesn't fit existing categories"
+                
+                # Add the new category to our system
+                self.add_new_category(new_category_name, new_category_description)
+                
+                # Replace UNKNOWN with the new category name in the results
+                valid_categories = [new_category_name if cat == "UNKNOWN" else cat for cat in valid_categories]
             
             # Build the final result
             processed_result = {

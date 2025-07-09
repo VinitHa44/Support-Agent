@@ -1,7 +1,7 @@
 import time
 from fastapi import APIRouter, Body, Depends, status
 from fastapi.responses import JSONResponse
-from system.src.app.controllers.generate_drafts_cnotroller import GenerateDraftsController
+from system.src.app.controllers.generate_drafts_controller import GenerateDraftsController
 from system.src.app.models.schemas import GenerateDraftsRequestSchema
 
 from system.src.app.utils.error_handler import handle_exceptions

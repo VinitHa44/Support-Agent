@@ -103,40 +103,4 @@ Response: {{"category": ["ai_performance_quality"], "query_for_search": "mobile 
 USER_PROMPT_TEMPLATE = """Subject: {subject}
 
 Body:
-{body}"""
-
-# Categories based on actual dataset analysis
-DEFAULT_CATEGORIES = [
-    "billing_financial_management",
-    "token_economy_credit_systems", 
-    "business_development_partnerships",
-    "feature_requests_capabilities",
-    "integration_api_limitations",
-    "user_experience_expectation",
-    "support_system_communication",
-    "account_user_management",
-    "ai_performance_quality",
-    "platform_stability_technical",
-    "mobile_development_deployment",
-    "preview_testing_systems",
-    "platform_migration_transition",
-    "authentication_access_systems"
-]
-
-# Category descriptions based on dataset analysis
-DEFAULT_CATEGORY_DESCRIPTIONS = {
-    "billing_financial_management": "Customer inquiries about billing cycles, subscription management, payment processing, refund requests, pricing plan confusion, upgrade/downgrade issues, and financial transaction disputes",
-    "token_economy_credit_systems": "Issues related to token consumption tracking, credit balance management, token refunds, unexpected token depletion, credit system errors, and token allocation problems",
-    "business_development_partnerships": "Enterprise partnership inquiries, white-label opportunities, reseller program requests, bulk licensing discussions, custom pricing negotiations, and strategic business collaboration proposals",
-    "feature_requests_capabilities": "User requests for missing platform features, technology stack limitations, integration capabilities, platform enhancement suggestions, and functionality gaps that impact user workflows",
-    "integration_api_limitations": "Third-party service integration issues, API connectivity problems, Figma plugin errors, external tool compatibility, webhook failures, and missing integration options with popular development tools",
-    "user_experience_expectation": "Misalignment between user expectations and actual platform capabilities, onboarding confusion, feature discovery issues, workflow disruptions, and gaps between marketing promises and delivered functionality",
-    "support_system_communication": "Difficulties accessing support channels, communication breakdowns, response time concerns, support ticket management issues, and problems with support interaction quality",
-    "account_user_management": "Account creation and deletion requests, user access recovery, profile management, project organization, team collaboration settings, account migration between plans, and workspace administration",
-    "ai_performance_quality": "AI model performance issues, code generation bugs, logical errors in AI responses, AI getting stuck in loops, quality degradation over time, and inconsistent AI behavior patterns",
-    "platform_stability_technical": "Application loading failures, system crashes, deployment errors, server downtime, performance bottlenecks, browser compatibility issues, and general technical infrastructure problems",
-    "mobile_development_deployment": "Mobile app compilation issues, APK file generation problems, TestFlight integration challenges, mobile platform deployment errors, and mobile-specific development workflow issues",
-    "preview_testing_systems": "Preview functionality failures, testing environment issues, preview loading errors, staging system problems, and difficulties with app preview and testing workflows",
-    "platform_migration_transition": "Issues during platform transitions, data migration problems, legacy system compatibility, upgrade process difficulties, and challenges moving between different platform versions",
-    "authentication_access_systems": "Login system failures, OTP delivery issues, authentication token problems, password reset difficulties, multi-factor authentication errors, and general access control system issues"
-} 
+{body}""" 

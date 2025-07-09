@@ -3,12 +3,7 @@ from typing import Dict, Any, List, Optional
 from fastapi import Depends, HTTPException
 
 from system.src.app.services.gemini_service import GeminiService
-from system.src.app.prompts.categorization_prompt import (
-    CATEGORIZATION_SYSTEM_PROMPT,
-    USER_PROMPT_TEMPLATE,
-    DEFAULT_CATEGORIES,
-    DEFAULT_CATEGORY_DESCRIPTIONS,
-)
+
 from system.src.app.usecases.categorisation_usecase.helper import CategorizationHelper
 
 
