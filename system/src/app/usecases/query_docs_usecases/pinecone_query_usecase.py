@@ -1,6 +1,5 @@
 from fastapi import Depends, HTTPException, status
 
-from system.src.app.config.settings import settings
 from system.src.app.services.embedding_service import EmbeddingService
 from system.src.app.services.pinecone_service import PineconeService
 from system.src.app.utils.logging_utils import loggers
@@ -31,12 +30,13 @@ class PineconeQueryUseCase:
             )
             if embedding_provider == "pinecone":
 
-
-                query_pinecone_response = await self.embedding_service.pinecone_dense_embeddings(
-                    inputs=[query],
-                    embedding_model=embed_model,
-                    input_type="query",
-                    dimension=dimension
+                query_pinecone_response = (
+                    await self.embedding_service.pinecone_dense_embeddings(
+                        inputs=[query],
+                        embedding_model=embed_model,
+                        input_type="query",
+                        dimension=dimension,
+                    )
                 )
                 # query_dense_embeds = [
                 #     item["values"]
@@ -57,7 +57,15 @@ class PineconeQueryUseCase:
                 detail=f"Error while generating the embeddings of querying docs: {str(e)}",
             )
 
-    async def random_query(self, query, index_name, top_k=20, is_hybrid=True, alpha=0.8, categories=None):
+    async def random_query(
+        self,
+        query,
+        index_name,
+        top_k=20,
+        is_hybrid=True,
+        alpha=0.8,
+        categories=None,
+    ):
         try:
             embed_model = "llama-text-embed-v2"
             dimension = 1024

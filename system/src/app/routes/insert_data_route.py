@@ -1,9 +1,11 @@
 import time
 
-from fastapi import APIRouter, Depends, File, status, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from fastapi.responses import JSONResponse
-from system.src.app.controllers.insert_data_controller import InsertDataController
 
+from system.src.app.controllers.insert_data_controller import (
+    InsertDataController,
+)
 from system.src.app.utils.error_handler import handle_exceptions
 
 router = APIRouter()
@@ -13,7 +15,9 @@ router = APIRouter()
 @handle_exceptions
 async def create_new_thread(
     file: UploadFile = File(...),
-    insert_data_controller: InsertDataController = Depends(InsertDataController),
+    insert_data_controller: InsertDataController = Depends(
+        InsertDataController
+    ),
 ):
 
     start_time = time.time()

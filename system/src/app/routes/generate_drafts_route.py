@@ -1,9 +1,12 @@
 import time
+
 from fastapi import APIRouter, Body, Depends, status
 from fastapi.responses import JSONResponse
-from system.src.app.controllers.generate_drafts_controller import GenerateDraftsController
-from system.src.app.models.schemas import GenerateDraftsRequestSchema
 
+from system.src.app.controllers.generate_drafts_controller import (
+    GenerateDraftsController,
+)
+from system.src.app.models.schemas import GenerateDraftsRequestSchema
 from system.src.app.utils.error_handler import handle_exceptions
 
 router = APIRouter()
@@ -12,8 +15,10 @@ router = APIRouter()
 @router.post("/generate-drafts", status_code=status.HTTP_201_CREATED)
 @handle_exceptions
 async def create_new_thread(
-    generate_drafts_controller: GenerateDraftsController = Depends(GenerateDraftsController),
-    query: GenerateDraftsRequestSchema = Body(...)
+    generate_drafts_controller: GenerateDraftsController = Depends(
+        GenerateDraftsController
+    ),
+    query: GenerateDraftsRequestSchema = Body(...),
 ):
 
     start_time = time.time()

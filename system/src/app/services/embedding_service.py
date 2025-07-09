@@ -1,10 +1,8 @@
-import json
 import logging
 import pickle
 
 import httpx
 from fastapi import HTTPException
-from pinecone_text.sparse import BM25Encoder
 
 from system.src.app.config.settings import settings
 from system.src.app.utils.logging_utils import loggers
@@ -14,6 +12,7 @@ logger = logging.getLogger(__name__)
 with open("bm25_encoder.pkl", "rb") as f:
     bm25 = pickle.load(f)
 
+
 class EmbeddingService:
     def __init__(self):
         self.pinecone_api_key = settings.PINECONE_API_KEY
@@ -21,11 +20,11 @@ class EmbeddingService:
         self.pinecone_embedding_url = settings.PINECONE_EMBED_URL
         self.pinecone_api_version = settings.PINECONE_API_VERSION
         self.timeout = httpx.Timeout(
-                        connect=60.0,  # Time to establish a connection
-                        read=300.0,    # Time to read the response
-                        write=300.0,   # Time to send data
-                        pool=60.0      # Time to wait for a connection from the pool
-                    )
+            connect=60.0,  # Time to establish a connection
+            read=300.0,  # Time to read the response
+            write=300.0,  # Time to send data
+            pool=60.0,  # Time to wait for a connection from the pool
+        )
 
     async def pinecone_dense_embeddings(
         self,
@@ -37,7 +36,7 @@ class EmbeddingService:
     ):
         # Format inputs as objects with 'text' field as expected by Pinecone API
         formatted_inputs = [{"text": text} for text in inputs]
-        
+
         payload = {
             "model": embedding_model,
             "parameters": {
@@ -49,7 +48,7 @@ class EmbeddingService:
         }
 
         if embedding_model != "multilingual-e5-large":
-            payload["parameters"]["dimension"] = dimension 
+            payload["parameters"]["dimension"] = dimension
 
         headers = {
             "Api-Key": self.pinecone_api_key,
@@ -60,20 +59,28 @@ class EmbeddingService:
         url = self.dense_embed_url
 
         try:
-            async with httpx.AsyncClient(timeout = self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 loggers["main"].info("embeddings generated")
                 response = response.json()
-                loggers["pinecone"].info(f"pinecone hosted embedding model tokens usage: {response['usage']}")
+                loggers["pinecone"].info(
+                    f"pinecone hosted embedding model tokens usage: {response['usage']}"
+                )
                 list_result = [item["values"] for item in response["data"]]
                 return list_result
 
         except httpx.HTTPStatusError as e:
-            loggers["main"].error(f"Error dense embeddings in pinecone dense embeddings: {e.response.text}")
-            raise HTTPException(status_code=400, detail=f"{str(e)}-{e.response.text}")
+            loggers["main"].error(
+                f"Error dense embeddings in pinecone dense embeddings: {e.response.text}"
+            )
+            raise HTTPException(
+                status_code=400, detail=f"{str(e)}-{e.response.text}"
+            )
         except Exception as e:
-            loggers["main"].error(f"Error dense embeddings in pinecone dense embeddings: {str(e)}")
+            loggers["main"].error(
+                f"Error dense embeddings in pinecone dense embeddings: {str(e)}"
+            )
             raise HTTPException(status_code=500, detail=str(e))
 
     def pinecone_sparse_embeddings(self, inputs):

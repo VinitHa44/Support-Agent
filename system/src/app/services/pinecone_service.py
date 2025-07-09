@@ -6,8 +6,10 @@ from typing import Any, Dict
 import httpx
 from fastapi import HTTPException
 from pinecone import Pinecone
+
 from system.src.app.config.settings import settings
 from system.src.app.utils.logging_utils import loggers
+
 
 class PineconeService:
     def __init__(self):
@@ -120,7 +122,7 @@ class PineconeService:
             return {"host": self.pc.describe_index(index_name).get("host")}
 
     async def upsert_format(
-        self, chunks: list, vector_embeddings: list  , sparse_embeddings: list
+        self, chunks: list, vector_embeddings: list, sparse_embeddings: list
     ):
         results = []
         for i in range(len(chunks)):
@@ -412,12 +414,16 @@ class PineconeService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def upsert_vectors_simplified(self, vectors: list, namespace: str = "default") -> Dict[str, Any]:
+    async def upsert_vectors_simplified(
+        self, vectors: list, namespace: str = "default"
+    ) -> Dict[str, Any]:
         """Simplified upsert method that gets index host automatically"""
         index_host = await self.get_index_host(settings.PINECONE_INDEX_NAME)
         return await self.upsert_vectors(index_host, vectors, namespace)
 
-    async def delete_vectors_simplified(self, vector_ids: list, namespace: str = "default") -> Dict[str, Any]:
+    async def delete_vectors_simplified(
+        self, vector_ids: list, namespace: str = "default"
+    ) -> Dict[str, Any]:
         """Simplified delete method that gets index host automatically"""
         if not vector_ids:
             return {"deleted": 0}

@@ -1,10 +1,11 @@
-import json
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict
+
 from fastapi import Depends, HTTPException
 
 from system.src.app.services.gemini_service import GeminiService
-
-from system.src.app.usecases.categorisation_usecase.helper import CategorizationHelper
+from system.src.app.usecases.categorisation_usecase.helper import (
+    CategorizationHelper,
+)
 
 
 class CategorizationUsecase:
@@ -19,7 +20,7 @@ class CategorizationUsecase:
     async def execute(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute email categorization with support for images.
-        
+
         :param email_data: Dictionary containing email information including:
             - id: message_id
             - thread_id: thread identifier
@@ -39,24 +40,24 @@ class CategorizationUsecase:
         try:
             # Validate required fields
             self.helper.validate_email_data(email_data)
-            
+
             # Extract key information
-            subject = email_data.get('subject', '')
-            body = email_data.get('body', '')
-            attachments = email_data.get('attachments', [])
-            has_images = email_data.get('has_images', False)
-            
+            subject = email_data.get("subject", "")
+            body = email_data.get("body", "")
+            attachments = email_data.get("attachments", [])
+            has_images = email_data.get("has_images", False)
+
             # Prepare user prompt
             user_prompt = self.helper.format_user_prompt(subject, body)
-            
+
             # Prepare system prompt with dynamic categories
             system_prompt = self.helper.format_system_prompt()
-            
+
             # Prepare images for Gemini if available
             images = None
             if has_images and attachments:
                 images = self.helper.prepare_images_for_gemini(attachments)
-            
+
             # Call Gemini API for categorization
             categorization_result = await self.gemini_service.completions_with_json_output(
                 user_prompt=user_prompt,
@@ -64,25 +65,25 @@ class CategorizationUsecase:
                 images=images,
                 temperature=0.1,  # Low temperature for consistent categorization
                 top_p=0.9,
-                top_k=40
+                top_k=40,
             )
-            
+
             # Validate and process the result
             processed_result = self.helper.validate_and_process_result(
                 categorization_result, email_data
             )
-            
+
             # Return simplified format as requested
             return {
-                "categories": processed_result['categories'],
-                "doc_search_query": processed_result['query_for_search'] or "",
-                "from": email_data.get('sender', ''),
-                "body": email_data.get('body', ''),
-                "subject": email_data.get('subject', '')
+                "categories": processed_result["categories"],
+                "doc_search_query": processed_result["query_for_search"] or "",
+                "from": email_data.get("sender", ""),
+                "body": email_data.get("body", ""),
+                "subject": email_data.get("subject", ""),
             }
-            
+
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Error in categorization usecase: {str(e)}"
+                detail=f"Error in categorization usecase: {str(e)}",
             )

@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class JSONFormatter(logging.Formatter):
@@ -64,11 +64,11 @@ def log_llm_call(
     system_prompt: str,
     messages: List[Dict[str, Any]],
     thread_id: str,
-    additional_info: Optional[Dict[str, Any]] = None
+    additional_info: Optional[Dict[str, Any]] = None,
 ):
     """
     Log LLM call details for tracking and debugging
-    
+
     Args:
         call_type: Type of LLM call (classification, post_app_modification, etc.)
         system_prompt: The system prompt used
@@ -84,16 +84,18 @@ def log_llm_call(
             "timestamp": datetime.utcnow().isoformat(),
             "system_prompt_length": len(system_prompt) if system_prompt else 0,
             "message_count": len(messages) if messages else 0,
-            "additional_info": additional_info or {}
+            "additional_info": additional_info or {},
         }
-        
+
         # Use the main logger
         logger = loggers.get("main")
         if logger:
             logger.info(json.dumps(log_data))
         else:
-            print(f"📝 [LLM_CALL] {call_type} - Thread: {thread_id} | Messages: {len(messages) if messages else 0}")
-            
+            print(
+                f"📝 [LLM_CALL] {call_type} - Thread: {thread_id} | Messages: {len(messages) if messages else 0}"
+            )
+
     except Exception as e:
         print(f"❌ [LOG] Error logging LLM call: {str(e)}")
 

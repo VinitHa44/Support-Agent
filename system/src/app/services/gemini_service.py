@@ -1,12 +1,11 @@
-import time
-import json
 import base64
+import json
+import time
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, HTTPException
-from google.genai import Client
-from google.genai import types
+from google.genai import Client, types
 
 from system.src.app.config.settings import settings
 from system.src.app.repositories.llm_usage_repository import LLMUsageRepository
@@ -31,7 +30,7 @@ class GeminiService:
         """
         This method sends a request to the Gemini API to get completions for the given prompts.
         Supports multimodal content including images.
-        
+
         :param user_prompt: The user prompt to get completions for.
         :param system_prompt: The system prompt to set assistant behavior.
         :param images: Optional list of image dictionaries with 'data' (base64) and 'mime_type' keys.
@@ -43,25 +42,28 @@ class GeminiService:
 
             # Prepare content parts
             content_parts = [user_prompt]
-            
+
             # Add images if provided
             if images:
                 for image_data in images:
-                    if 'data' in image_data and 'mime_type' in image_data:
+                    if "data" in image_data and "mime_type" in image_data:
                         # Decode base64 image data
-                        image_bytes = base64.b64decode(image_data['data'])
+                        image_bytes = base64.b64decode(image_data["data"])
                         image_part = types.Part.from_bytes(
-                            data=image_bytes, 
-                            mime_type=image_data['mime_type']
+                            data=image_bytes, mime_type=image_data["mime_type"]
                         )
                         content_parts.append(image_part)
 
             # Prepare generation config
             generation_config = {
                 "max_output_tokens": 17000,
-                "response_mime_type": "application/json" if params.get("json_output", False) else "text/plain",
+                "response_mime_type": (
+                    "application/json"
+                    if params.get("json_output", False)
+                    else "text/plain"
+                ),
             }
-            
+
             # Add optional parameters
             for key, value in params.items():
                 if key in ["temperature", "top_p", "top_k"]:
@@ -72,9 +74,8 @@ class GeminiService:
                 model=self.gemini_model,
                 contents=content_parts,
                 config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    **generation_config
-                )
+                    system_instruction=system_prompt, **generation_config
+                ),
             )
 
             end_time = time.perf_counter()
@@ -118,7 +119,7 @@ class GeminiService:
     ) -> dict:
         """
         This method sends a request to the Gemini API and expects a JSON response.
-        
+
         :param user_prompt: The user prompt to get completions for.
         :param system_prompt: The system prompt to set assistant behavior.
         :param images: Optional list of image dictionaries with 'data' (base64) and 'mime_type' keys.
@@ -128,14 +129,14 @@ class GeminiService:
         try:
             # Set JSON output parameter
             params["json_output"] = True
-            
+
             response_text = await self.completions(
                 user_prompt=user_prompt,
                 system_prompt=system_prompt,
                 images=images,
-                **params
+                **params,
             )
-            
+
             # Parse JSON response
             try:
                 return json.loads(response_text)
@@ -143,25 +144,28 @@ class GeminiService:
                 # Try to handle Python-style None values in JSON response
                 try:
                     # Replace Python None with JSON null
-                    fixed_response = response_text.replace(': None', ': null').replace(':None', ':null')
+                    fixed_response = response_text.replace(
+                        ": None", ": null"
+                    ).replace(":None", ":null")
                     return json.loads(fixed_response)
                 except json.JSONDecodeError:
                     # If still fails, try using ast.literal_eval for Python-like responses
                     try:
                         import ast
+
                         result = ast.literal_eval(response_text)
                         # Convert Python dict with None to JSON-compatible dict with None -> None
                         return result
                     except (ValueError, SyntaxError):
                         raise HTTPException(
                             status_code=500,
-                            detail=f"Failed to parse JSON response from Gemini API: {str(e)}. Response: {response_text}"
+                            detail=f"Failed to parse JSON response from Gemini API: {str(e)}. Response: {response_text}",
                         )
-                
+
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Error while getting JSON response from Gemini API: {str(e)}"
+                detail=f"Error while getting JSON response from Gemini API: {str(e)}",
             )

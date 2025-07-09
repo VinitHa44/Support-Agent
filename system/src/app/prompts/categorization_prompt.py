@@ -103,4 +103,4 @@ Response: {{"category": ["ai_performance_quality"], "query_for_search": "mobile 
 USER_PROMPT_TEMPLATE = """Subject: {subject}
 
 Body:
-{body}""" 
+{body}"""

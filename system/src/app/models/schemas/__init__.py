@@ -1,9 +1,6 @@
 from .generate_drafts_schemas import (
     AttachmentSchema,
-    GenerateDraftsRequestSchema
+    GenerateDraftsRequestSchema,
 )
 
-__all__ = [
-    "AttachmentSchema",
-    "GenerateDraftsRequestSchema"
-]
+__all__ = ["AttachmentSchema", "GenerateDraftsRequestSchema"]

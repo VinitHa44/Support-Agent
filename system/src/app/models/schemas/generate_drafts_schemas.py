@@ -1,10 +1,11 @@
-from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class AttachmentSchema(BaseModel):
     """Schema for email attachments"""
+
     filename: str
     mime_type: str
     size: int
@@ -17,6 +18,7 @@ class AttachmentSchema(BaseModel):
 
 class GenerateDraftsRequestSchema(BaseModel):
     """Schema for generate drafts request"""
+
     id: str
     thread_id: str
     subject: str

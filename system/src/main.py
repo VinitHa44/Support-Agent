@@ -3,8 +3,10 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from system.src.app.routes import insert_data_route, generate_drafts_route
+
 from system.src.app.config.database import mongodb_database
+from system.src.app.routes import generate_drafts_route, insert_data_route
+
 
 @asynccontextmanager
 async def db_lifespan(app: FastAPI):
@@ -31,6 +33,7 @@ app.include_router(
 app.include_router(
     generate_drafts_route.router, prefix="/api/v1", tags=["Generate Drafts"]
 )
+
 
 @app.get("/")
 async def root():
