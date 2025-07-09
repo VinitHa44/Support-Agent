@@ -91,7 +91,8 @@ class GenerateDraftsController:
                 "body": categorization_response.get("body"),
                 "rocket_docs_response": rocket_docs_response,
                 "dataset_response": dataset_response,
-                "categories": categories if categories else [],  # Ensure categories is always a list
+                # "categories": categories if categories else [],  # Ensure categories is always a list
+                "categories": [],
                 "attachments": query.get("attachments", []),  # Pass attachments from original query
             }
             generate_drafts_response = (
@@ -99,9 +100,6 @@ class GenerateDraftsController:
                 generate_drafts_query
             )
         )
-
-           
-
             # Check if drafts length > 1 for review process
             drafts = generate_drafts_response.get("drafts", [])
             

@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict
 
 from fastapi import Depends, HTTPException
@@ -6,6 +7,7 @@ from system.src.app.services.gemini_service import GeminiService
 from system.src.app.usecases.categorisation_usecase.helper import (
     CategorizationHelper,
 )
+from system.src.app.utils.response_parser import parse_response
 
 
 class CategorizationUsecase:
@@ -58,15 +60,27 @@ class CategorizationUsecase:
             if has_images and attachments:
                 images = self.helper.prepare_images_for_gemini(attachments)
 
-            # Call Gemini API for categorization
-            categorization_result = await self.gemini_service.completions_with_json_output(
+            # Call Gemini API for categorization using the updated service
+            response_text = await self.gemini_service.generate_response(
                 user_prompt=user_prompt,
                 system_prompt=system_prompt,
                 images=images,
                 temperature=0.1,  # Low temperature for consistent categorization
-                top_p=0.9,
-                top_k=40,
             )
+
+            # Parse the JSON response using the response parser utility
+            try:
+                categorization_result = parse_response(response_text)
+                
+                # Ensure we have a valid dict response
+                if not isinstance(categorization_result, dict):
+                    raise ValueError("Response is not a valid dictionary")
+                    
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Invalid JSON response from Gemini API: {str(e)}. Response: {response_text[:500]}"
+                )
 
             # Validate and process the result
             processed_result = self.helper.validate_and_process_result(
