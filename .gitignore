@@ -34,6 +34,7 @@ wheels/
 context/
 codebase/
 artifacts/
+tokens/
 struct_logs/
 share/python-wheels/
 *.egg-info/
