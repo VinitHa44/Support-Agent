@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from system.src.app.config.database import mongodb_database
-from system.src.app.routes import generate_drafts_route, insert_data_route
+from system.src.app.routes import generate_drafts_route, insert_data_route, websocket_route
 
 
 @asynccontextmanager
@@ -33,6 +33,9 @@ app.include_router(
 app.include_router(
     generate_drafts_route.router, prefix="/api/v1", tags=["Generate Drafts"]
 )
+app.include_router(
+    websocket_route.router, prefix="/api/v1", tags=["WebSocket"]
+)
 
 
 @app.get("/")
@@ -41,4 +44,4 @@ async def root():
 
 
 if __name__ == "__main__":
-    uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
