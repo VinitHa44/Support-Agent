@@ -253,21 +253,31 @@ class CategorizationHelper:
                     valid_categories.append(category)
                 elif category == "UNKNOWN":
                     # Handle new category creation
-                    new_category_name = categorization_result.get("new_category_name")
-                    new_category_description = categorization_result.get("new_category_description")
+                    new_category_name = categorization_result.get(
+                        "new_category_name"
+                    )
+                    new_category_description = categorization_result.get(
+                        "new_category_description"
+                    )
 
                     if not new_category_name:
                         new_category_name = "uncategorized_query"
                     if not new_category_description:
-                        new_category_description = "Query that doesn't fit existing categories"
+                        new_category_description = (
+                            "Query that doesn't fit existing categories"
+                        )
 
                     # Add the new category to our system
-                    self.add_new_category(new_category_name, new_category_description)
-                    
+                    self.add_new_category(
+                        new_category_name, new_category_description
+                    )
+
                     # Add to new categories list (just the name)
                     new_categories.append(new_category_name)
                 else:
-                    print(f"Warning: Unknown category '{category}' found in result, skipping")
+                    print(
+                        f"Warning: Unknown category '{category}' found in result, skipping"
+                    )
 
             # Build the final result
             processed_result = {
@@ -277,22 +287,35 @@ class CategorizationHelper:
                 "sender": email_data.get("sender", ""),
                 "categories": valid_categories,  # Only known categories
                 "new_categories": new_categories,  # New categories as separate field
-                "query_for_search": categorization_result.get("query_for_search"),
-                "new_category_name": categorization_result.get("new_category_name"),
-                "new_category_description": categorization_result.get("new_category_description"),
+                "query_for_search": categorization_result.get(
+                    "query_for_search"
+                ),
+                "new_category_name": categorization_result.get(
+                    "new_category_name"
+                ),
+                "new_category_description": categorization_result.get(
+                    "new_category_description"
+                ),
                 "has_images": email_data.get("has_images", False),
                 "confidence_indicators": {
                     "multiple_categories": len(valid_categories) > 1,
-                    "needs_search": categorization_result.get("query_for_search") is not None,
+                    "needs_search": categorization_result.get(
+                        "query_for_search"
+                    )
+                    is not None,
                     "has_new_categories": len(new_categories) > 0,
                 },
                 "processing_metadata": {
-                    "processed_attachments": len(email_data.get("attachments", [])),
-                    "image_count": len([
-                        att
-                        for att in email_data.get("attachments", [])
-                        if att.get("is_image", False)
-                    ]),
+                    "processed_attachments": len(
+                        email_data.get("attachments", [])
+                    ),
+                    "image_count": len(
+                        [
+                            att
+                            for att in email_data.get("attachments", [])
+                            if att.get("is_image", False)
+                        ]
+                    ),
                 },
             }
 
