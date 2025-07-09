@@ -1,30 +1,34 @@
-import base64
 import json
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, HTTPException
-from google.genai import Client, types
 
 from system.src.app.config.settings import settings
 from system.src.app.repositories.llm_usage_repository import LLMUsageRepository
+from system.src.app.services.api_service import ApiService
 
 
 class GeminiService:
     def __init__(
         self,
+        api_service: ApiService = Depends(),
         llm_usage_repository: LLMUsageRepository = Depends(),
     ) -> None:
-        self.client = Client(api_key=settings.GEMINI_API_KEY)
-        self.gemini_model = settings.GEMINI_MODEL
+        self.api_key = settings.GEMINI_API_KEY
+        self.url = f"{settings.GEMINI_URL}{self.api_key}"
+        self.stream_url = f"{settings.GEMINI_STREAM_URL}{self.api_key}"
+        self.api_service = api_service
         self.llm_usage_repository = llm_usage_repository
+        self.max_output_tokens = 40000
 
-    async def completions(
+    async def generate_response(
         self,
         user_prompt: str,
         system_prompt: str,
         images: Optional[List[Dict[str, Any]]] = None,
+        temperature: float = 0.7,
         **params,
     ) -> str:
         """
@@ -39,133 +43,79 @@ class GeminiService:
         """
         try:
             start_time = time.perf_counter()
+            
+            headers = {"Content-Type": "application/json"}
 
             # Prepare content parts
-            content_parts = [user_prompt]
-
+            parts = []
+            
             # Add images if provided
             if images:
-                for image_data in images:
-                    if "data" in image_data and "mime_type" in image_data:
-                        # Decode base64 image data
-                        image_bytes = base64.b64decode(image_data["data"])
-                        image_part = types.Part.from_bytes(
-                            data=image_bytes, mime_type=image_data["mime_type"]
-                        )
-                        content_parts.append(image_part)
+                for image in images:
+                    parts.append({
+                        "inline_data": {
+                            "mime_type": image.get("mime_type", "image/jpeg"),
+                            "data": image.get("data"),
+                        }
+                    })
+            
+            # Add system prompt and user prompt as text
+            combined_prompt = f"{user_prompt}"
+            parts.append({"text": combined_prompt})
 
-            # Prepare generation config
-            generation_config = {
-                "max_output_tokens": 17000,
-                "response_mime_type": (
-                    "application/json"
-                    if params.get("json_output", False)
-                    else "text/plain"
-                ),
+            payload = {
+                "system_instruction": {
+                    "parts": [{"text": system_prompt}]
+                },
+                "contents": [{"parts": parts}],
+                "generationConfig": {
+                    "temperature": temperature,
+                    "maxOutputTokens": self.max_output_tokens
+                },
             }
 
-            # Add optional parameters
-            for key, value in params.items():
-                if key in ["temperature", "top_p", "top_k"]:
-                    generation_config[key] = value
-
-            # Generate content
-            response = self.client.models.generate_content(
-                model=self.gemini_model,
-                contents=content_parts,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt, **generation_config
-                ),
+            # Use ApiService for HTTP request
+            response_data = await self.api_service.post(
+                url=self.url, 
+                headers=headers, 
+                data=payload
             )
 
             end_time = time.perf_counter()
             duration = end_time - start_time
 
-            # Extract usage metadata
-            usage = response.usage_metadata
-            prompt_tokens = usage.prompt_token_count if usage else 0
-            completion_tokens = usage.candidates_token_count if usage else 0
-            total_tokens = usage.total_token_count if usage else 0
+            # Extract token usage from response
+            usage_metadata = response_data.get("usageMetadata", {})
+            prompt_tokens = usage_metadata.get("promptTokenCount", 0)
+            completion_tokens = usage_metadata.get("candidatesTokenCount", 0)
+            total_tokens = usage_metadata.get("totalTokenCount", prompt_tokens + completion_tokens)
 
-            # Log usage
+            # Track LLM usage
             llm_usage = {
-                "input_tokens": prompt_tokens,
-                "output_tokens": completion_tokens,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
                 "total_tokens": total_tokens,
                 "duration": duration,
-                "provider": "Google",
-                "model": self.gemini_model,
-                "created_at": datetime.utcnow(),
-                "system_prompt": system_prompt,
-                "user_prompt": user_prompt,
-                "response": response.text,
+                "provider": "Gemini",
+                "model": settings.GEMINI_MODEL,
+                "created_at": datetime.now(datetime.UTC),
             }
             await self.llm_usage_repository.add_llm_usage(llm_usage)
 
-            return response.text
-
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error while sending a request to the Gemini API: {str(e)} \n error from gemini_service in completions()",
-            )
-
-    async def completions_with_json_output(
-        self,
-        user_prompt: str,
-        system_prompt: str,
-        images: Optional[List[Dict[str, Any]]] = None,
-        **params,
-    ) -> dict:
-        """
-        This method sends a request to the Gemini API and expects a JSON response.
-
-        :param user_prompt: The user prompt to get completions for.
-        :param system_prompt: The system prompt to set assistant behavior.
-        :param images: Optional list of image dictionaries with 'data' (base64) and 'mime_type' keys.
-        :param params: Optional parameters for the API request.
-        :return: The parsed JSON response from the Gemini API.
-        """
-        try:
-            # Set JSON output parameter
-            params["json_output"] = True
-
-            response_text = await self.completions(
-                user_prompt=user_prompt,
-                system_prompt=system_prompt,
-                images=images,
-                **params,
-            )
-
-            # Parse JSON response
+            # Extract response text
             try:
-                return json.loads(response_text)
-            except json.JSONDecodeError as e:
-                # Try to handle Python-style None values in JSON response
-                try:
-                    # Replace Python None with JSON null
-                    fixed_response = response_text.replace(
-                        ": None", ": null"
-                    ).replace(":None", ":null")
-                    return json.loads(fixed_response)
-                except json.JSONDecodeError:
-                    # If still fails, try using ast.literal_eval for Python-like responses
-                    try:
-                        import ast
-
-                        result = ast.literal_eval(response_text)
-                        # Convert Python dict with None to JSON-compatible dict with None -> None
-                        return result
-                    except (ValueError, SyntaxError):
-                        raise HTTPException(
-                            status_code=500,
-                            detail=f"Failed to parse JSON response from Gemini API: {str(e)}. Response: {response_text}",
-                        )
+                return response_data["candidates"][0]["content"]["parts"][0]["text"]
+            except (KeyError, IndexError):
+                raise HTTPException(
+                    status_code=500,
+                    detail="Unexpected response format from Gemini API.",
+                )
 
         except HTTPException:
+            # Re-raise HTTPException from ApiService
             raise
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Error while getting JSON response from Gemini API: {str(e)}",
+                detail=f"Error processing Gemini API request: {str(e)}",
             )
