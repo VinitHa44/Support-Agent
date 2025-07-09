@@ -188,30 +188,6 @@ class GenerateDraftsController:
                 print(f"Single draft generated, returning directly without review")
                 single_draft = drafts[0] if drafts else "No draft available"
                 
-                # Store the single draft as a template before returning
-                try:
-                    # Combine categories and new_categories
-                    categories = categorization_response.get("categories", [])
-                    new_categories = categorization_response.get("new_categories", [])
-                    combined_categories = categories + new_categories
-                    
-                    # Create the template in the required format
-                    template_data = [{
-                        "subject": categorization_response.get("subject", ""),
-                        "from": categorization_response.get("from", ""),
-                        "query": categorization_response.get("body", ""),
-                        "response": single_draft,
-                        "categories": combined_categories
-                    }]
-                    
-                    # Call data insert usecase to store the template
-                    result = await self.data_insert_usecase.execute(new_template=template_data)
-                    print(f"Successfully stored single draft template: {result}")
-                    
-                except Exception as e:
-                    # Log the error but don't fail the main process
-                    print(f"Warning: Failed to store single draft template: {str(e)}")
-                
                 return {
                     "body": single_draft
                 }
