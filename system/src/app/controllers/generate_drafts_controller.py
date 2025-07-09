@@ -5,6 +5,9 @@ from fastapi import Depends, HTTPException
 
 from system.src.app.config.settings import settings
 from system.src.app.services.websocket_service import websocket_manager
+from system.src.app.usecases.generate_drafts_usecases.generate_drafts_usecase import (
+    GenerateDraftsUsecase,
+)
 from system.src.app.usecases.categorisation_usecase.categorisation_usecase import (
     CategorizationUsecase,
 )
@@ -91,18 +94,16 @@ class GenerateDraftsController:
                 "categories": categories if categories else [],  # Ensure categories is always a list
                 "attachments": query.get("attachments", []),  # Pass attachments from original query
             }
-            draft_response = (
-                await self.generate_drafts_usecase.generate_drafts(
-                    generate_drafts_query
-                )
+            generate_drafts_response = (
+            await self.generate_drafts_usecase.generate_drafts(
+                generate_drafts_query
             )
-            # # Generate drafts using the usecase
-            # draft_response = await self.generate_drafts_usecase.generate_drafts(
-            #     {**query, **context_data}
-            # )
+        )
+
+           
 
             # Check if drafts length > 1 for review process
-            drafts = draft_response.get("drafts", [])
+            drafts = generate_drafts_response.get("drafts", [])
             
             if len(drafts) > 1:
                 print(f"Multiple drafts generated ({len(drafts)}), sending to frontend for review...")
@@ -112,7 +113,7 @@ class GenerateDraftsController:
                 # THIS PAUSES ROUTE EXECUTION until user responds
                 try:
                     final_response = await websocket_manager.send_draft_for_review(
-                        user_id, draft_response
+                        user_id, generate_drafts_response
                     )
                     
                     print(f"Route execution RESUMED - user review completed")

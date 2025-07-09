@@ -6,6 +6,7 @@ temp/
 struct_logs/
 bm25_encoder.pkl
 session-data/
+problem_statement_and_system_working.md
 
 
 
@@ -34,6 +35,7 @@ wheels/
 context/
 codebase/
 artifacts/
+tokens/
 struct_logs/
 share/python-wheels/
 *.egg-info/
