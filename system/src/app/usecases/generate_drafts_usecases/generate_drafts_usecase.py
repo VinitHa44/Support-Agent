@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import json
 from typing import Dict, List, Optional
 
@@ -6,7 +7,7 @@ from fastapi import Depends
 
 from system.src.app.models.schemas.generate_drafts_schemas import AttachmentSchema
 from system.src.app.prompts.generate_drafts_prompts import (
-    GENERATE_DRAFTS_SYSTEMPROMPT,
+    GENERATE_DRAFTS_SYSTEM_PROMPT,
 )
 from system.src.app.services.gemini_service import GeminiService
 from system.src.app.usecases.generate_drafts_usecases.generate_drafts_usecases_helper import GenerateDraftsHelper
@@ -23,19 +24,6 @@ class GenerateDraftsUsecase:
         self.helper = helper
 
     async def generate_drafts(self, query: Dict) -> Dict:
-        """
-        Generate draft responses based on the query data.
-
-        :param query: Dictionary containing:
-            - from: sender email
-            - subject: email subject
-            - body: email body
-            - rocket_docs_response: search results from rocket docs
-            - dataset_response: search results from dataset
-            - attachments: optional list of attachments
-            - categories: optional list of categories
-        :return: Dictionary with drafts in the expected format
-        """
         try:
 
             # Extract data from query
@@ -56,48 +44,43 @@ class GenerateDraftsUsecase:
                 subject=subject,
                 body=body,
                 rocket_doc_results=rocket_docs_response,
-                dataset_search_results=dataset_response,
+                dataset_search_results=dataset_response
             )
 
             # Handle image attachments if present
             images = None
             if attachments:
-                images = self._process_attachments(attachments)
+                processed_images = self._process_attachments(attachments)
+                if processed_images:
+                    images = processed_images
 
             # Get system prompt
-            system_prompt = GENERATE_DRAFTS_SYSTEMPROMPT
+            system_prompt = GENERATE_DRAFTS_SYSTEM_PROMPT
+
+            # Prepare call parameters - only include images if they exist
+            call_params = {
+                "user_prompt": user_prompt,
+                "system_prompt": system_prompt,
+                "temperature": 0.1,
+                "top_p": 0.9,
+                "top_k": 40
+            }
+            
+            # Only add images parameter if there are actual images
+            if images is not None and len(images) > 0:
+                call_params["images"] = images
 
             # Check if categories is empty to determine drafts generation strategy
             if categories and len(categories) > 0:
                 # Categories exist - generate single draft
-                gemini_response = await self.gemini_service.generate_response(
-                    user_prompt=user_prompt,
-                    system_prompt=system_prompt,
-                    images=images,
-                    temperature=0.1,
-                    top_p=0.9,
-                    top_k=40
-                )
+                gemini_response = await self.gemini_service.generate_response(**call_params)
                 gemini_response = parse_response(gemini_response)
                 drafts = gemini_response.get("body", "")
                 drafts = [drafts]
             else:
-                draft_task_1 = self.gemini_service.generate_response(
-                    user_prompt=user_prompt,
-                    system_prompt=system_prompt,
-                    images=images,
-                    temperature=0.1,
-                    top_p=0.9,
-                    top_k=40
-                )
-                draft_task_2 = self.gemini_service.generate_response(
-                    user_prompt=user_prompt,
-                    system_prompt=system_prompt,
-                    images=images,
-                    temperature=0.1,
-                    top_p=0.9,
-                    top_k=40
-                )
+                # Categories empty - generate two drafts in parallel
+                draft_task_1 = self.gemini_service.generate_response(**call_params)
+                draft_task_2 = self.gemini_service.generate_response(**call_params)
                 
                 # Execute both tasks in parallel
                 response_1, response_2 = await asyncio.gather(draft_task_1, draft_task_2)
@@ -131,10 +114,10 @@ class GenerateDraftsUsecase:
 
     def _process_attachments(self, attachments: List) -> Optional[List[Dict]]:
         """
-        Process attachments and prepare images for Gemini API.
+        Process attachments and prepare images for Gemini API in the format expected by generate_response.
 
         :param attachments: List of attachment data
-        :return: List of processed images for Gemini or None
+        :return: List of processed images for Gemini in inline_data format or None
         """
         try:
             # Convert attachment data to AttachmentSchema objects
@@ -148,8 +131,40 @@ class GenerateDraftsUsecase:
                     # Assume it's already an AttachmentSchema object
                     attachment_objects.append(attachment_data)
 
-            # Prepare images for Gemini
-            images = self.helper.prepare_images_for_gemini(attachment_objects)
+            # Prepare images for Gemini in the new format
+            images = []
+            for attachment in attachment_objects:
+                # Skip non-image attachments
+                if not attachment.is_image:
+                    continue
+
+                # Extract base64 data and mime type
+                base64_data = attachment.base64_data
+                mime_type = attachment.mime_type
+                filename = attachment.filename
+
+                # Skip if no base64 data or mime type
+                if not base64_data or not mime_type:
+                    print(f"Warning: Skipping image '{filename}' - missing base64_data or mime_type")
+                    continue
+
+                # Validate base64 data and format for generate_response
+                try:
+                    # Test if data can be decoded
+                    base64.b64decode(base64_data)
+                    image_part = {
+                        # "inline_data": {
+                        "mime_type": mime_type,
+                        "data": base64_data,
+                        # }
+                    }
+                    images.append(image_part)
+                    print(f"Successfully processed image: {filename} ({mime_type})")
+                except Exception as e:
+                    # Log the error but continue processing other images
+                    print(f"Warning: Failed to process image attachment '{filename}': {str(e)}")
+                    continue
+
             return images if images else None
 
         except Exception as e:

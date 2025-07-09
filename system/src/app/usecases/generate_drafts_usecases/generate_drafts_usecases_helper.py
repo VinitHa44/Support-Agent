@@ -1,10 +1,5 @@
-import base64
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 from system.src.app.prompts.generate_drafts_prompts import GENERATE_DRAFTS_USER_PROMPT
-
-from fastapi import HTTPException
-
-from system.src.app.models.schemas.generate_drafts_schemas import AttachmentSchema
 
 
 class GenerateDraftsHelper:
@@ -62,75 +57,3 @@ class GenerateDraftsHelper:
             reference_templates=dataset_formatted
         )
         return user_prompt
-
-    def prepare_images_for_gemini(
-        self, attachments: List[AttachmentSchema]
-    ) -> List[Dict[str, str]]:
-        """
-        Prepare image attachments for Gemini API using the attachment schema.
-
-        :param attachments: List of AttachmentSchema objects
-        :return: List of formatted image dictionaries for Gemini
-        """
-        images = []
-
-        for attachment in attachments:
-            # Skip non-image attachments
-            if not attachment.is_image:
-                continue
-
-            # Extract base64 data and mime type
-            base64_data = attachment.base64_data
-            mime_type = attachment.mime_type
-            filename = attachment.filename
-
-            # Skip if no base64 data or mime type
-            if not base64_data or not mime_type:
-                print(
-                    f"Warning: Skipping image '{filename}' - missing base64_data or mime_type"
-                )
-                continue
-
-            # Validate base64 data
-            try:
-                # Test if data can be decoded
-                base64.b64decode(base64_data)
-                images.append({"data": base64_data, "mime_type": mime_type})
-                print(f"Successfully processed image: {filename} ({mime_type})")
-            except Exception as e:
-                # Log the error but continue processing other images
-                print(
-                    f"Warning: Failed to process image attachment '{filename}': {str(e)}"
-                )
-                continue
-
-        return images
-
-    def _extract_drafts_from_text(self, text_response: str) -> Dict[str, Any]:
-        """
-        Extract drafts from text response if JSON parsing fails.
-
-        :param text_response: Raw text response from Gemini
-        :return: Dictionary with drafts field
-        """
-        # Simple implementation - treat the entire response as a single draft
-        # This can be enhanced based on specific response patterns
-        return {
-            "drafts": [text_response.strip()]
-        }
-
-    def is_valid_base64(self, data: str) -> bool:
-        """
-        Check if a string is valid base64.
-
-        :param data: String to check
-        :return: True if valid base64, False otherwise
-        """
-        try:
-            if isinstance(data, str):
-                # Check if it's valid base64
-                base64.b64decode(data)
-                return True
-        except Exception:
-            pass
-        return False 
