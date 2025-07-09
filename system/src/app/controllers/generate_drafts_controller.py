@@ -39,12 +39,17 @@ class GenerateDraftsController:
     async def generate_drafts(self, query: Dict, user_id: str = "default_user"):
         """
         Generate drafts and handle review process
-
+        
         :param query: Email query data
         :param user_id: User identifier for WebSocket communication
         :return: Final draft response
         """
         try:
+            # Add missing 'id' field required by categorization usecase
+            if "id" not in query:
+                import time
+                query["id"] = f"api_email_{int(time.time())}"
+            
             # Get categorization response
             categorization_response = await self.categorization_usecase.execute(
                 query
@@ -102,8 +107,8 @@ class GenerateDraftsController:
                 "body": categorization_response.get("body"),
                 "rocket_docs_response": rocket_docs_response,
                 "dataset_response": dataset_response,
-                # "categories": categories if categories else [],  # Ensure categories is always a list
-                "categories": [],
+                "categories": categories if categories else [],  # Ensure categories is always a list
+                # "categories": [],
                 "attachments": query.get(
                     "attachments", []
                 ),  # Pass attachments from original query

@@ -19,16 +19,7 @@ class AttachmentSchema(BaseModel):
 class GenerateDraftsRequestSchema(BaseModel):
     """Schema for generate drafts request"""
 
-    id: str
-    thread_id: str
     subject: str
     sender: str
-    date: str
-    message_id: str
-    in_reply_to: Optional[str] = None
     body: str
     attachments: List[AttachmentSchema]
-    has_images: bool
-    is_unread: bool
-    internal_date: str
-    labels: List[str]

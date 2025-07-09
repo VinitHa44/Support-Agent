@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Send } from 'lucide-react';
 import DraftReviewPanel from './components/DraftReviewPanel';
 import ConnectionStatus from './components/ConnectionStatus';
 
@@ -106,67 +105,6 @@ function App() {
     }
   };
 
-  const triggerTestDraftGeneration = async () => {
-    if (!isConnected) {
-      toast.error('WebSocket not connected. Please wait for connection.');
-      return;
-    }
-
-    toast.info('Sending test email for draft generation...');
-    
-    const testEmail = {
-      id: `test_email_${Date.now()}`,
-      thread_id: `thread_${Date.now()}`,
-      subject: 'Test Email - Payment and Platform Issues',
-      sender: 'test.customer@example.com',
-      date: new Date().toISOString(),
-      message_id: `msg_${Date.now()}`,
-      body: `Hi Rocket Support Team,
-
-I'm experiencing multiple issues with the platform:
-
-1. Payment processing keeps failing
-2. My tokens are being consumed too quickly  
-3. The generated apps have several bugs
-4. I need help with deployment
-
-This is urgent and affecting my business operations.
-
-Please provide comprehensive assistance.
-
-Best regards,
-Test Customer`,
-      attachments: [],
-      has_images: false,
-      is_unread: true,
-      internal_date: new Date().toISOString(),
-      labels: ['INBOX', 'URGENT']
-    };
-
-    try {
-      const response = await fetch(`/api/v1/generate-drafts?user_id=${userId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testEmail)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        toast.success('Test email sent! Waiting for drafts...');
-        console.log('API Response:', result);
-      } else {
-        const errorText = await response.text();
-        toast.error(`API request failed: ${response.status}`);
-        console.error('API Error:', errorText);
-      }
-    } catch (error) {
-      toast.error(`Request failed: ${error}`);
-      console.error('Request Error:', error);
-    }
-  };
-
   const requestNotificationPermission = () => {
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission().then(permission => {
@@ -212,14 +150,6 @@ Test Customer`,
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter user ID"
               />
-              <button
-                onClick={triggerTestDraftGeneration}
-                disabled={!isConnected}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Test Draft Generation
-              </button>
             </div>
           </div>
 
@@ -243,16 +173,6 @@ Test Customer`,
                     ? 'Connected and ready to receive drafts for review' 
                     : 'Connecting to draft review system...'}
                 </p>
-                {isConnected && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
-                    <p className="text-sm text-blue-800 mb-2">
-                      <strong>Ready to test?</strong>
-                    </p>
-                    <p className="text-xs text-blue-600">
-                      Click the "Test Draft Generation" button above to send a sample email and see the draft review process in action.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           )}

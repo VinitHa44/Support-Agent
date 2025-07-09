@@ -58,7 +58,7 @@ async def process_email_async(email: Dict):
             "subject": email["subject"],
             "sender": email["sender"],
             "body": email["body"],
-            "attachments": email["attachments"],
+            "attachments": email["attachments"] if email["attachments"] else [],
         }
 
         # Call external service to generate reply (non-blocking)

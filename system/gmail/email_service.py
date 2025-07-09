@@ -366,7 +366,6 @@ class EmailService:
     def create_draft(
         self,
         to_email: str,
-        subject: str,
         body: str,
         in_reply_to: str = None,
         thread_id: str = None,
@@ -380,7 +379,7 @@ class EmailService:
             # Prepare email message
             message = {
                 "raw": self._create_message_raw(
-                    to_email, subject, body, in_reply_to
+                    to_email, body, in_reply_to
                 )
             }
 
@@ -405,13 +404,11 @@ class EmailService:
             return False
 
     def _create_message_raw(
-        self, to_email: str, subject: str, body: str, in_reply_to: str = None
+        self, to_email: str, body: str, in_reply_to: str = None
     ) -> str:
         """Create raw email message"""
         message = MIMEText(body)
         message["to"] = to_email
-        message["subject"] = subject
-
         if in_reply_to:
             message["In-Reply-To"] = in_reply_to
             message["References"] = in_reply_to
