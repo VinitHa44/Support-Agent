@@ -3,16 +3,16 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from system.src.app.routes import insert_data_route
+from system.src.app.config.database import mongodb_database
 
-# from system.src.app.config.database import mongodb_database
+@asynccontextmanager
+async def db_lifespan(app: FastAPI):
+    mongodb_database.connect()
 
-# @asynccontextmanager
-# async def db_lifespan(app: FastAPI):
-#     mongodb_database.connect()
+    yield
 
-#     yield
-
-#     mongodb_database.disconnect()
+    mongodb_database.disconnect()
 
 
 app = FastAPI(title="Rocket Classification System")
@@ -23,6 +23,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.include_router(
+    insert_data_route.router, prefix="/api/v1", tags=["Insert Data"]
 )
 
 @app.get("/")

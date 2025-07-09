@@ -1,2 +1,9 @@
 uvicorn
 fastapi
+python-dotenv
+pydantic-settings
+httpx
+pinecone
+pinecone-text
+motor
+python-multipart
