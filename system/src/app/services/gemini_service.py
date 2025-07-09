@@ -98,7 +98,7 @@ class GeminiService:
                 "duration": duration,
                 "provider": "Gemini",
                 "model": settings.GEMINI_MODEL,
-                "created_at": datetime.now(datetime.UTC),
+                "created_at": datetime.now().isoformat(),
             }
             await self.llm_usage_repository.add_llm_usage(llm_usage)
 
