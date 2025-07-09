@@ -14,6 +14,9 @@ from system.src.app.usecases.categorisation_usecase.categorisation_usecase impor
 from system.src.app.usecases.query_docs_usecases.query_docs_usecase import (
     QueryDocsUsecase,
 )
+from system.src.app.usecases.data_insert_usecases.data_insert_usecase import (
+    DataInsertUsecase,
+)
 
 
 class GenerateDraftsController:
@@ -26,10 +29,12 @@ class GenerateDraftsController:
         categorization_usecase: CategorizationUsecase = Depends(
             CategorizationUsecase
         ),
+        data_insert_usecase: DataInsertUsecase = Depends(DataInsertUsecase),
     ):
         self.generate_drafts_usecase = generate_drafts_usecase
         self.query_docs_usecase = query_docs_usecase
         self.categorization_usecase = categorization_usecase
+        self.data_insert_usecase = data_insert_usecase
 
     async def generate_drafts(self, query: Dict, user_id: str = "default_user"):
         """
@@ -117,6 +122,30 @@ class GenerateDraftsController:
                     print(f"Route execution RESUMED - user review completed")
                     print(f"Final user choice received, returning to calling service")
                     
+                    # Store the final response as a template before returning
+                    try:
+                        # Combine categories and new_categories
+                        categories = categorization_response.get("categories", [])
+                        new_categories = categorization_response.get("new_categories", [])
+                        combined_categories = categories + new_categories
+                        
+                        # Create the template in the required format
+                        template_data = [{
+                            "subject": categorization_response.get("subject", ""),
+                            "from": categorization_response.get("from", ""),
+                            "query": categorization_response.get("body", ""),
+                            "response": final_response.get("body", ""),
+                            "categories": combined_categories
+                        }]
+                        
+                        # Call data insert usecase to store the template
+                        result = await self.data_insert_usecase.execute(new_template=template_data)
+                        print(f"Successfully stored final response template: {result}")
+                        
+                    except Exception as e:
+                        # Log the error but don't fail the main process
+                        print(f"Warning: Failed to store final response template: {str(e)}")
+                    
                     # Return the final user-selected draft to the calling service (e.g., Gmail)
                     return {
                         "body": final_response.get("body", "")
@@ -125,14 +154,66 @@ class GenerateDraftsController:
                 except Exception as e:
                     # If WebSocket fails, return the first draft as fallback
                     print(f"WebSocket error: {str(e)} - falling back to first draft")
+                    fallback_draft = drafts[0] if drafts else "No draft available"
+                    
+                    # Store the fallback response as a template before returning
+                    try:
+                        # Combine categories and new_categories
+                        categories = categorization_response.get("categories", [])
+                        new_categories = categorization_response.get("new_categories", [])
+                        combined_categories = categories + new_categories
+                        
+                        # Create the template in the required format
+                        template_data = [{
+                            "subject": categorization_response.get("subject", ""),
+                            "from": categorization_response.get("from", ""),
+                            "query": categorization_response.get("body", ""),
+                            "response": fallback_draft,
+                            "categories": combined_categories
+                        }]
+                        
+                        # Call data insert usecase to store the template
+                        result = await self.data_insert_usecase.execute(new_template=template_data)
+                        print(f"Successfully stored fallback response template: {result}")
+                        
+                    except Exception as e:
+                        # Log the error but don't fail the main process
+                        print(f"Warning: Failed to store fallback response template: {str(e)}")
+                    
                     return {
-                        "body": drafts[0] if drafts else "No draft available"
+                        "body": fallback_draft
                     }
             else:
                 # Single draft or no drafts - return directly (no review needed)
                 print(f"Single draft generated, returning directly without review")
+                single_draft = drafts[0] if drafts else "No draft available"
+                
+                # Store the single draft as a template before returning
+                try:
+                    # Combine categories and new_categories
+                    categories = categorization_response.get("categories", [])
+                    new_categories = categorization_response.get("new_categories", [])
+                    combined_categories = categories + new_categories
+                    
+                    # Create the template in the required format
+                    template_data = [{
+                        "subject": categorization_response.get("subject", ""),
+                        "from": categorization_response.get("from", ""),
+                        "query": categorization_response.get("body", ""),
+                        "response": single_draft,
+                        "categories": combined_categories
+                    }]
+                    
+                    # Call data insert usecase to store the template
+                    result = await self.data_insert_usecase.execute(new_template=template_data)
+                    print(f"Successfully stored single draft template: {result}")
+                    
+                except Exception as e:
+                    # Log the error but don't fail the main process
+                    print(f"Warning: Failed to store single draft template: {str(e)}")
+                
                 return {
-                    "body": drafts[0] if drafts else "No draft available"
+                    "body": single_draft
                 }
 
         except Exception as e:
