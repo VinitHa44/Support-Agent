@@ -1,4 +1,3 @@
-import json
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -43,42 +42,42 @@ class GeminiService:
         """
         try:
             start_time = time.perf_counter()
-            
+
             headers = {"Content-Type": "application/json"}
 
             # Prepare content parts
             parts = []
-            
+
             # Add images if provided
             if images:
                 for image in images:
-                    parts.append({
-                        "inline_data": {
-                            "mime_type": image.get("mime_type", "image/jpeg"),
-                            "data": image.get("data"),
+                    parts.append(
+                        {
+                            "inline_data": {
+                                "mime_type": image.get(
+                                    "mime_type", "image/jpeg"
+                                ),
+                                "data": image.get("data"),
+                            }
                         }
-                    })
-            
+                    )
+
             # Add system prompt and user prompt as text
             combined_prompt = f"{user_prompt}"
             parts.append({"text": combined_prompt})
 
             payload = {
-                "system_instruction": {
-                    "parts": [{"text": system_prompt}]
-                },
+                "system_instruction": {"parts": [{"text": system_prompt}]},
                 "contents": [{"parts": parts}],
                 "generationConfig": {
                     "temperature": temperature,
-                    "maxOutputTokens": self.max_output_tokens
+                    "maxOutputTokens": self.max_output_tokens,
                 },
             }
 
             # Use ApiService for HTTP request
             response_data = await self.api_service.post(
-                url=self.url, 
-                headers=headers, 
-                data=payload
+                url=self.url, headers=headers, data=payload
             )
 
             end_time = time.perf_counter()
@@ -88,7 +87,9 @@ class GeminiService:
             usage_metadata = response_data.get("usageMetadata", {})
             prompt_tokens = usage_metadata.get("promptTokenCount", 0)
             completion_tokens = usage_metadata.get("candidatesTokenCount", 0)
-            total_tokens = usage_metadata.get("totalTokenCount", prompt_tokens + completion_tokens)
+            total_tokens = usage_metadata.get(
+                "totalTokenCount", prompt_tokens + completion_tokens
+            )
 
             # Track LLM usage
             llm_usage = {
@@ -104,7 +105,9 @@ class GeminiService:
 
             # Extract response text
             try:
-                return response_data["candidates"][0]["content"]["parts"][0]["text"]
+                return response_data["candidates"][0]["content"]["parts"][0][
+                    "text"
+                ]
             except (KeyError, IndexError):
                 raise HTTPException(
                     status_code=500,

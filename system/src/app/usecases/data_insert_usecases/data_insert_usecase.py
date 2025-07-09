@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Dict, List, Optional
+
 from fastapi import Depends, UploadFile
 
 from system.src.app.usecases.data_insert_usecases.data_insert_usecase_helper import (
@@ -40,7 +41,11 @@ class DataInsertUsecase:
         except Exception as e:
             return {"error": f"Error processing file: {str(e)}"}
 
-    async def execute(self, file: Optional[UploadFile] = None, new_template: Optional[List[Dict]] = None):
+    async def execute(
+        self,
+        file: Optional[UploadFile] = None,
+        new_template: Optional[List[Dict]] = None,
+    ):
         try:
             if file:
                 examples = await self._process_file(file)
@@ -50,7 +55,7 @@ class DataInsertUsecase:
                 print(f"Processing new template with {len(examples)} examples")
             else:
                 return {"error": "No file or new template provided"}
-            
+
             embeddings = (
                 await self.data_insert_usecase_helper.generate_embeddings(
                     examples

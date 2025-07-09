@@ -1,37 +1,53 @@
 from typing import Dict, List, Tuple
-from system.src.app.prompts.generate_drafts_prompts import GENERATE_DRAFTS_USER_PROMPT
+
+from system.src.app.prompts.generate_drafts_prompts import (
+    GENERATE_DRAFTS_USER_PROMPT,
+)
 
 
 class GenerateDraftsHelper:
     def __init__(self):
         pass
 
-    async def format_rocket_docs_response(self, rocket_docs_response: List[Dict]) -> List[Dict]:
+    async def format_rocket_docs_response(
+        self, rocket_docs_response: List[Dict]
+    ) -> List[Dict]:
         formatted_rocket_docs_response = []
         if rocket_docs_response:
             for result in rocket_docs_response:
                 formatted_rocket_docs_response.append(result.get("query", ""))
         return formatted_rocket_docs_response
 
-    async def format_dataset_response(self, dataset_response: List[Dict]) -> List[Dict]:
+    async def format_dataset_response(
+        self, dataset_response: List[Dict]
+    ) -> List[Dict]:
         formatted_dataset_response = []
         if dataset_response:
             element = {}
             for result in dataset_response:
                 element["query"] = result.get("query", "")
-                element["response"] = result.get("metadata", {}).get("response", "")
+                element["response"] = result.get("metadata", {}).get(
+                    "response", ""
+                )
                 element["from"] = result.get("metadata", {}).get("from", "")
-                element["subject"] = result.get("metadata", {}).get("subject", "")
+                element["subject"] = result.get("metadata", {}).get(
+                    "subject", ""
+                )
                 formatted_dataset_response.append(element)
         return formatted_dataset_response
 
-    async def format_pinecone_results(self, rocket_docs_response: List[Dict], dataset_response: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
+    async def format_pinecone_results(
+        self, rocket_docs_response: List[Dict], dataset_response: List[Dict]
+    ) -> Tuple[List[Dict], List[Dict]]:
         if rocket_docs_response:
-            rocket_docs_response = await self.format_rocket_docs_response(rocket_docs_response)
+            rocket_docs_response = await self.format_rocket_docs_response(
+                rocket_docs_response
+            )
         if dataset_response:
-            dataset_response = await self.format_dataset_response(dataset_response)
+            dataset_response = await self.format_dataset_response(
+                dataset_response
+            )
         return rocket_docs_response, dataset_response
-        
 
     def format_user_prompt(
         self,
@@ -54,6 +70,6 @@ class GenerateDraftsHelper:
         user_prompt = GENERATE_DRAFTS_USER_PROMPT.format(
             docs_content=rocket_docs_formatted,
             email_content=f"From: {sender}\nSubject: {subject}\nBody: {body}",
-            reference_templates=dataset_formatted
+            reference_templates=dataset_formatted,
         )
         return user_prompt

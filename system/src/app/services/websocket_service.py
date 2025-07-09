@@ -1,8 +1,8 @@
 import asyncio
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 
 
 class WebSocketManager:
@@ -33,51 +33,60 @@ class WebSocketManager:
             del self.response_futures[user_id]
         print(f"WebSocket disconnected for user: {user_id}")
 
-    async def send_draft_for_review(self, user_id: str, draft_data: Dict) -> Dict:
+    async def send_draft_for_review(
+        self, user_id: str, draft_data: Dict
+    ) -> Dict:
         """
         Send draft data to frontend for review and wait for response
-        
+
         :param user_id: User identifier
         :param draft_data: Draft data to send for review
         :return: Final draft response from user
         """
         if user_id not in self.active_connections:
-            raise Exception(f"No active WebSocket connection for user: {user_id}")
+            raise Exception(
+                f"No active WebSocket connection for user: {user_id}"
+            )
 
         websocket = self.active_connections[user_id]
-        
+
         # Store the draft data
         self.pending_drafts[user_id] = draft_data
-        
+
         # Create a future to wait for the response
         future = asyncio.Future()
         self.response_futures[user_id] = future
 
         try:
             print(f"Sending drafts to frontend for user {user_id}...")
-            
+
             # Send draft data to frontend
-            await websocket.send_text(json.dumps({
-                "type": "draft_review",
-                "data": draft_data
-            }))
-            
-            print(f"Drafts sent. API route is now WAITING for user response (max 5 minutes)...")
-            
+            await websocket.send_text(
+                json.dumps({"type": "draft_review", "data": draft_data})
+            )
+
+            print(
+                f"Drafts sent. API route is now WAITING for user response (max 5 minutes)..."
+            )
+
             # Wait for user response (with timeout) - THIS BLOCKS THE API ROUTE
-            response = await asyncio.wait_for(future, timeout=300.0)  # 5 minutes timeout
-            
+            response = await asyncio.wait_for(
+                future, timeout=300.0
+            )  # 5 minutes timeout
+
             print(f"User response received! API route can now continue...")
             return response
-            
+
         except asyncio.TimeoutError:
             # Cleanup on timeout
             if user_id in self.response_futures:
                 del self.response_futures[user_id]
             if user_id in self.pending_drafts:
                 del self.pending_drafts[user_id]
-            raise Exception("Draft review timeout - no response received within 5 minutes")
-        
+            raise Exception(
+                "Draft review timeout - no response received within 5 minutes"
+            )
+
         except Exception as e:
             # Cleanup on error
             if user_id in self.response_futures:
@@ -89,7 +98,7 @@ class WebSocketManager:
     async def handle_draft_response(self, user_id: str, response_data: Dict):
         """
         Handle the draft response from frontend
-        
+
         :param user_id: User identifier
         :param response_data: Response data from frontend
         """
@@ -97,7 +106,7 @@ class WebSocketManager:
             future = self.response_futures[user_id]
             if not future.done():
                 future.set_result(response_data)
-            
+
             # Cleanup
             del self.response_futures[user_id]
             if user_id in self.pending_drafts:
@@ -120,4 +129,4 @@ class WebSocketManager:
 
 
 # Global WebSocket manager instance
-websocket_manager = WebSocketManager() 
+websocket_manager = WebSocketManager()

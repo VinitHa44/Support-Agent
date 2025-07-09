@@ -19,11 +19,14 @@ async def create_new_thread(
         GenerateDraftsController
     ),
     query: GenerateDraftsRequestSchema = Body(...),
-    user_id: str = Query(default="default_user", description="User ID for WebSocket communication"),
+    user_id: str = Query(
+        default="default_user",
+        description="User ID for WebSocket communication",
+    ),
 ):
     """
     Generate drafts for customer support emails
-    
+
     :param generate_drafts_controller: Controller instance
     :param query: Email query data
     :param user_id: User identifier for WebSocket communication
@@ -31,7 +34,9 @@ async def create_new_thread(
     """
     start_time = time.time()
     query_dict = query.model_dump()
-    response = await generate_drafts_controller.generate_drafts(query_dict, user_id)
+    response = await generate_drafts_controller.generate_drafts(
+        query_dict, user_id
+    )
     end_time = time.time()
     duration = end_time - start_time
 

@@ -40,8 +40,12 @@ class Settings(BaseSettings):
     )
     GEMINI_COMPLETION_ENDPOINT: str = "generateContent"
     GEMINI_MODEL: str = "gemini-2.0-flash"
-    GEMINI_URL: str = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
-    GEMINI_STREAM_URL: str = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?key="
+    GEMINI_URL: str = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
+    )
+    GEMINI_STREAM_URL: str = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?key="
+    )
 
     # Voyage Settings
     VOYAGEAI_API_KEY: str
