@@ -57,7 +57,7 @@ class PineconeQueryUseCase:
                 detail=f"Error while generating the embeddings of querying docs: {str(e)}",
             )
 
-    async def random_query(self, query, index_name, top_k=20, is_hybrid=True, alpha=0.8):
+    async def random_query(self, query, index_name, top_k=20, is_hybrid=True, alpha=0.8, categories=None):
         try:
             embed_model = "llama-text-embed-v2"
             dimension = 1024
@@ -79,6 +79,11 @@ class PineconeQueryUseCase:
                 query, embed_model, dimension
             )
 
+            # Prepare metadata filter if categories are provided
+            metadata_filter = None
+            if categories:
+                metadata_filter = {"categories": {"$in": categories}}
+
             if is_hybrid:
                 query_sparse_vector = (
                     self.embedding_service.pinecone_sparse_embeddings([query])
@@ -97,6 +102,7 @@ class PineconeQueryUseCase:
                         query_dense_vector,
                         query_sparse_vector,
                         include_metadata,
+                        metadata_filter,
                     )
                 )
             else:
@@ -106,6 +112,7 @@ class PineconeQueryUseCase:
                     top_k=top_k,
                     vector=query_dense_vector,
                     include_metadata=include_metadata,
+                    filter_dict=metadata_filter,
                 )
             matches = pinecone_response.get("matches", [])
             final_responses = []

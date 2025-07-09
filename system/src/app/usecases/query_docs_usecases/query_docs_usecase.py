@@ -11,8 +11,8 @@ class QueryDocsUsecase:
         self.pinecone_query_usecase = pinecone_query_usecase
         self.reranker_service = reranker_service
 
-    async def query_docs(self, query: str, index_name: str, top_k: int = 20, is_hybrid: bool = True, alpha: float = 0.8, top_n: int = 5):
-        pinecone_response = await self.pinecone_query_usecase.random_query(query, index_name, top_k, is_hybrid, alpha)
+    async def query_docs(self, query: str, index_name: str, top_k: int = 20, is_hybrid: bool = True, alpha: float = 0.8, top_n: int = 5, categories: list = None):
+        pinecone_response = await self.pinecone_query_usecase.random_query(query, index_name, top_k, is_hybrid, alpha, categories)
         filtered_docs = [
             chunk.get("content") for chunk in pinecone_response if chunk["score"] > 0.2
         ]
