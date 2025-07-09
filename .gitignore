@@ -226,3 +226,4 @@ __marimo__/
 linters.sh
 struct_logs/
 node_modules/
+simulate_gmail_service.py
