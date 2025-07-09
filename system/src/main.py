@@ -8,6 +8,7 @@ from system.src.app.config.database import mongodb_database
 from system.src.app.routes import (
     generate_drafts_route,
     insert_data_route,
+    request_logs_route,
     websocket_route,
 )
 
@@ -36,6 +37,9 @@ app.include_router(
 )
 app.include_router(
     generate_drafts_route.router, prefix="/api/v1", tags=["Generate Drafts"]
+)
+app.include_router(
+    request_logs_route.router, prefix="/api/v1", tags=["Request Logs"]
 )
 app.include_router(websocket_route.router, prefix="/api/v1", tags=["WebSocket"])
 

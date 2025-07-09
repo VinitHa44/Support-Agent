@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     MONGODB_DB_NAME: str = "rocket-support-agent"
     LLM_USAGE_COLLECTION_NAME: str = "llm_usage"
     ERROR_COLLECTION_NAME: str = "errors"
+    REQUEST_LOGS_COLLECTION_NAME: str = "request_logs"
 
     # OpenAI settings
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"

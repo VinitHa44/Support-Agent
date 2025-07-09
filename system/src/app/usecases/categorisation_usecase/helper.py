@@ -227,23 +227,58 @@ class CategorizationHelper:
         :return: Processed and validated result
         """
         try:
-            # Validate required fields in the result
+            # Validate required fields in the result with defensive defaults
             required_fields = [
                 "category",
                 "query_for_search",
                 "new_category_name",
                 "new_category_description",
             ]
+            
+            # Ensure all required fields exist with defaults
             for field in required_fields:
                 if field not in categorization_result:
-                    raise ValueError(
-                        f"Missing required field in categorization result: {field}"
-                    )
+                    if field == "category":
+                        categorization_result[field] = ["UNKNOWN"]
+                    else:
+                        categorization_result[field] = None
 
-            # Validate category is a list
+            # Validate category field and ensure it's a list
             categories = categorization_result["category"]
-            if not isinstance(categories, list):
-                raise ValueError("Category must be a list")
+            
+            # Handle both string and list responses from Gemini
+            if isinstance(categories, str):
+                # Convert single string to list
+                categories = [categories]
+            elif isinstance(categories, list):
+                # Already a list, use as-is
+                pass
+            else:
+                # Invalid type, try to convert or use fallback
+                try:
+                    if categories is None:
+                        categories = ["UNKNOWN"]
+                    else:
+                        categories = [str(categories)]
+                except:
+                    categories = ["UNKNOWN"]
+                    
+            # Ensure we have a valid non-empty list
+            if not categories or len(categories) == 0:
+                categories = ["UNKNOWN"]
+            
+            # Ensure query_for_search is properly handled
+            query_for_search = categorization_result.get("query_for_search")
+            if query_for_search is not None and not isinstance(query_for_search, str):
+                # Convert to string if it's not None and not a string
+                try:
+                    query_for_search = str(query_for_search)
+                except:
+                    query_for_search = None
+            
+            # Debug information
+            print(f"Debug - Processed categories: {categories}")
+            print(f"Debug - Query for search: {query_for_search}")
 
             # Validate categories against known categories
             valid_categories = []
@@ -287,9 +322,7 @@ class CategorizationHelper:
                 "sender": email_data.get("sender", ""),
                 "categories": valid_categories,  # Only known categories
                 "new_categories": new_categories,  # New categories as separate field
-                "query_for_search": categorization_result.get(
-                    "query_for_search"
-                ),
+                "query_for_search": query_for_search,  # Use processed version
                 "new_category_name": categorization_result.get(
                     "new_category_name"
                 ),

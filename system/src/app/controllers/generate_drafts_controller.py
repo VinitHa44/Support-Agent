@@ -1,9 +1,11 @@
 import asyncio
+import time
 from typing import Dict
 
 from fastapi import Depends, HTTPException
 
 from system.src.app.config.settings import settings
+from system.src.app.repositories.request_log_repository import RequestLogRepository
 from system.src.app.services.websocket_service import websocket_manager
 from system.src.app.usecases.categorisation_usecase.categorisation_usecase import (
     CategorizationUsecase,
@@ -30,11 +32,13 @@ class GenerateDraftsController:
             CategorizationUsecase
         ),
         data_insert_usecase: DataInsertUsecase = Depends(DataInsertUsecase),
+        request_log_repository: RequestLogRepository = Depends(RequestLogRepository),
     ):
         self.generate_drafts_usecase = generate_drafts_usecase
         self.query_docs_usecase = query_docs_usecase
         self.categorization_usecase = categorization_usecase
         self.data_insert_usecase = data_insert_usecase
+        self.request_log_repository = request_log_repository
 
     async def generate_drafts(self, query: Dict, user_id: str = "default_user"):
         """
@@ -44,10 +48,12 @@ class GenerateDraftsController:
         :param user_id: User identifier for WebSocket communication
         :return: Final draft response
         """
+        # Start timing for performance tracking
+        start_time = time.time()
+        
         try:
             # Add missing 'id' field required by categorization usecase
             if "id" not in query:
-                import time
                 query["id"] = f"api_email_{int(time.time())}"
             
             # Get categorization response
@@ -183,6 +189,18 @@ class GenerateDraftsController:
                             f"Warning: Failed to store final response template: {str(e)}"
                         )
 
+                    # Log the request before returning
+                    processing_time = time.time() - start_time
+                    await self._log_request(
+                        query, 
+                        categorization_response, 
+                        final_response.get("body", ""),
+                        processing_time,
+                        user_id,
+                        multiple_drafts_generated=True,
+                        user_reviewed=True
+                    )
+
                     # Return the final user-selected draft to the calling service (e.g., Gmail)
                     return {"body": final_response.get("body", "")}
 
@@ -235,6 +253,18 @@ class GenerateDraftsController:
                             f"Warning: Failed to store fallback response template: {str(e)}"
                         )
 
+                    # Log the request before returning
+                    processing_time = time.time() - start_time
+                    await self._log_request(
+                        query, 
+                        categorization_response, 
+                        fallback_draft,
+                        processing_time,
+                        user_id,
+                        multiple_drafts_generated=True,
+                        user_reviewed=False
+                    )
+
                     return {"body": fallback_draft}
             else:
                 # Single draft or no drafts - return directly (no review needed)
@@ -243,6 +273,18 @@ class GenerateDraftsController:
                 )
                 single_draft = drafts[0] if drafts else "No draft available"
 
+                # Log the request before returning
+                processing_time = time.time() - start_time
+                await self._log_request(
+                    query, 
+                    categorization_response, 
+                    single_draft,
+                    processing_time,
+                    user_id,
+                    multiple_drafts_generated=False,
+                    user_reviewed=False
+                )
+
                 return {"body": single_draft}
 
         except Exception as e:
@@ -250,3 +292,63 @@ class GenerateDraftsController:
                 status_code=500,
                 detail=f"Error in generate drafts controller: {str(e)}",
             )
+
+    async def _log_request(
+        self,
+        query: Dict,
+        categorization_response: Dict,
+        final_draft: str,
+        processing_time: float,
+        user_id: str,
+        multiple_drafts_generated: bool = False,
+        user_reviewed: bool = False,
+    ):
+        """
+        Log request data for statistics
+        
+        :param query: Original email query
+        :param categorization_response: Categorization results
+        :param final_draft: Final draft response
+        :param processing_time: Time taken to process request
+        :param user_id: User identifier
+        :param multiple_drafts_generated: Whether multiple drafts were generated
+        :param user_reviewed: Whether user reviewed the drafts
+        """
+        try:
+            # Combine categories and new_categories
+            categories = categorization_response.get("categories", [])
+            new_categories = categorization_response.get("new_categories", [])
+            combined_categories = categories + new_categories
+            
+            # Determine flags
+            has_attachments = bool(query.get("attachments", []))
+            has_new_categories = bool(new_categories)
+            required_docs = bool(categorization_response.get("doc_search_query", "").strip())
+            
+            # Create request log data
+            request_log_data = {
+                "request_id": query.get("id", f"unknown_{int(time.time())}"),
+                "from_email": categorization_response.get("from", ""),
+                "subject": categorization_response.get("subject", ""),
+                "body": categorization_response.get("body", ""),
+                "categories": combined_categories,
+                "has_new_categories": has_new_categories,
+                "has_attachments": has_attachments,
+                "required_docs": required_docs,
+                "draft_response": final_draft,
+                "processing_time": processing_time,
+                "user_id": user_id,
+                "categorization_categories": categories,
+                "new_categories_created": new_categories,
+                "doc_search_query": categorization_response.get("doc_search_query"),
+                "multiple_drafts_generated": multiple_drafts_generated,
+                "user_reviewed": user_reviewed,
+            }
+            
+            # Save to database
+            await self.request_log_repository.add_request_log(request_log_data)
+            print(f"Request logged successfully: {request_log_data['request_id']}")
+            
+        except Exception as e:
+            # Log error but don't fail the main process
+            print(f"Warning: Failed to log request: {str(e)}")
