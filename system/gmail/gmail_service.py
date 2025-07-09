@@ -6,13 +6,13 @@ Non-blocking approach: polling and email processing are separate.
 """
 
 import asyncio
+import httpx
 import logging
 import signal
 import sys
 from typing import Dict
-import time
 from email_service import EmailService
-from config import POLL_INTERVAL_SECONDS
+from config import settings
 
 # Configure logging
 logging.basicConfig(
@@ -48,14 +48,11 @@ async def process_email_async(email: Dict):
         
         # Prepare request for external service
         email_data = {
-            'id': email['id'],
+            "id": email['id'],
             'subject': email['subject'],
             'sender': email['sender'],
             'body': email['body'],
-            'date': email['date'],
-            'thread_id': email['thread_id'],
-            'attachments': email['attachments'],
-            'has_images': email['has_images']
+            'attachments': email['attachments']
         }
         
         # Call external service to generate reply (non-blocking)
@@ -86,51 +83,33 @@ async def process_email_async(email: Dict):
 async def call_external_service(email_data: Dict) -> Dict:
     """Generate dummy draft reply for the given email"""
     try:
-        logger.info(f"Generating dummy draft for email: {email_data.get('subject', 'No subject')}")
+        logger.info(f"Generating dummy draft for email: {email_data.get('id', 'no id')}")
         
-        # Extract email details
-        subject = email_data.get('subject', '')
-        sender = email_data.get('sender', '')
-        body = email_data.get('body', '')
-        has_images = email_data.get('has_images', False)
-        attachments = email_data.get('attachments', [])
-        
-        # Count image attachments
-        image_count = len([att for att in attachments if att.get('is_image', False)])
-        
-        # Create a personalized dummy response
-        reply_body = f"""Thank you for your email regarding "{subject}".
-
-I have received your message and will review it carefully."""
-        
-        if has_images and image_count > 0:
-            reply_body += f"""
-
-I noticed you included {image_count} image(s) in your email. I will review the visual content as well."""
-        
-        if len(attachments) > image_count:
-            doc_count = len(attachments) - image_count
-            reply_body += f"""
-
-I also see you've attached {doc_count} document(s). I will examine these materials."""
-        
-        reply_body += """
-
-I will get back to you within 24 hours with a detailed response.
-
-Best regards"""
-        
-        response = {
-            "body": reply_body
+        # Prepare payload for the API
+        payload = {
+            "subject": email_data.get('subject', 'No subject'),
+            "sender": email_data.get('sender', 'no sender email'),
+            "body": email_data.get('body', 'No body'),
+            "attachments": email_data.get('attachments', []),
         }
         
-        logger.info(f"Generated dummy draft reply: {subject}")
+        headers = {
+            "Content-Type": "application/json"
+        }
         
-        await asyncio.sleep(60)
-        return response
+        async with httpx.AsyncClient(timeout=httpx.Timeout(connect=30.0, read=1600.0, write=600.0, pool=30.0)) as client:
+            api_response = await client.post(settings.EXTERNAL_SERVICE_URL, json=payload, headers=headers)
+            api_response.raise_for_status()
+            response_data = api_response.json()
+        
+        logger.info(f"Successfully generated draft reply for: {email_data.get('id', 'no id')}")
+        
+        # Return the response containing the body field
+        
+        return response_data
         
     except Exception as e:
-        logger.error(f"Error generating dummy response: {e}")
+        logger.error(f"Error generating draft response: {e}")
         return None
 
 def extract_email_address(from_header: str) -> str:
@@ -189,11 +168,11 @@ async def main():
             
             # Continue to next poll immediately (doesn't wait for email processing)
             logger.info(f"[POLLING] Continuing to next poll cycle. Active background tasks: {len(background_tasks)}")
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            await asyncio.sleep(settings.POLL_INTERVAL_SECONDS)
             
         except Exception as e:
             logger.error(f"[POLLING] Error in polling loop: {e}")
-            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+            await asyncio.sleep(settings.POLL_INTERVAL_SECONDS)
     
     # Wait for remaining background tasks to complete on shutdown
     if background_tasks:

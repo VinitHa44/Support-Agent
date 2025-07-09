@@ -7,7 +7,7 @@ from typing import List, Dict, Optional
 from googleapiclient.errors import HttpError
 from email.mime.text import MIMEText
 from auth import GmailAuth
-from config import HISTORY_FILE
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ class EmailService:
     def _load_history_id(self) -> Optional[str]:
         """Load last history ID from JSON file"""
         try:
-            if os.path.exists(HISTORY_FILE):
-                with open(HISTORY_FILE, 'r') as f:
+            if os.path.exists(settings.HISTORY_FILE):
+                with open(settings.HISTORY_FILE, 'r') as f:
                     data = json.load(f)
                     return data.get('last_history_id')
         except Exception as e:
@@ -33,12 +33,12 @@ class EmailService:
     def _save_history_id(self, history_id: str):
         """Save history ID to JSON file"""
         try:
-            os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+            os.makedirs(os.path.dirname(settings.HISTORY_FILE), exist_ok=True)
             data = {
                 'last_history_id': history_id,
                 'last_updated': datetime.now().isoformat()
             }
-            with open(HISTORY_FILE, 'w') as f:
+            with open(settings.HISTORY_FILE, 'w') as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Error saving history ID: {e}")

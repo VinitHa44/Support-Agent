@@ -1,13 +1,16 @@
-# Gmail API Configuration
-GMAIL_SCOPES = [
-    'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/gmail.compose'
-]
+import httpx
+from pydantic import BaseModel
+from typing import List
 
-# OAuth2 credentials file path
-CREDENTIALS_FILE = "/Users/tapankheni/Developer/support-agent/tokens/credentials.json"
-TOKEN_FILE = "/Users/tapankheni/Developer/support-agent/tokens/gmail_tokens.json"
-HISTORY_FILE = "/Users/tapankheni/Developer/support-agent/tokens/history.json"
+class Settings(BaseModel):
+    GMAIL_SCOPES: List[str] = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.compose"
+    ]
+    CREDENTIALS_FILE: str = "/Users/tapankheni/Developer/support-agent/tokens/credentials.json"
+    TOKEN_FILE: str = "/Users/tapankheni/Developer/support-agent/tokens/gmail_tokens.json"
+    HISTORY_FILE: str = "/Users/tapankheni/Developer/support-agent/tokens/history.json"
+    POLL_INTERVAL_SECONDS: int = 25
+    EXTERNAL_SERVICE_URL: str = "http://localhost:8000/generate-drafts"
 
-# Polling configuration
-POLL_INTERVAL_SECONDS = 25  # Poll every 25 seconds 
+settings = Settings()
