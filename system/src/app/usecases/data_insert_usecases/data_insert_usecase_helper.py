@@ -7,6 +7,7 @@ from system.src.app.config.settings import settings
 from system.src.app.services.embedding_service import EmbeddingService
 from system.src.app.services.pinecone_service import PineconeService
 from system.src.app.utils.logging_utils import loggers
+from typing import List, Dict
 
 class DataInsertUsecaseHelper:
     def __init__(self, 
@@ -18,9 +19,10 @@ class DataInsertUsecaseHelper:
         self.embedding_service = embedding_service
         self.pinecone_service = pinecone_service
     
-    def _generate_vector_id(self, query: str, category: str) -> str:
+    def _generate_vector_id(self, query: str, categories: List[str]) -> str:
         """Generate a unique vector ID based on query and category"""
-        combined = f"{query}_{category}"
+        category_str = "_".join(categories)
+        combined = f"{query}_{category_str}"
         return hashlib.sha256(combined.encode()).hexdigest()
 
 
@@ -68,7 +70,7 @@ class DataInsertUsecaseHelper:
             example = chunk["example"]  # Get the original example data
             
             vector_data = {
-                "id": self._generate_vector_id(example["query"], example["category"]),
+                "id": self._generate_vector_id(example["query"], example["categories"]),
                 "values": chunk["dense"],  # Dense embeddings
                 "sparse_values": {
                     "indices": chunk["sparse"]["indices"],
@@ -76,8 +78,8 @@ class DataInsertUsecaseHelper:
                 },
                 "metadata": {
                     "content": example["query"],
-                    "answer": example["answer"],
-                    "category": example["category"],
+                    "response": example["response"],
+                    "categories": example["categories"],
                     "from": example["from"],
                     "subject": example["subject"]
                 }

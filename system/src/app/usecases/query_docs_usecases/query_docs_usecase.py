@@ -33,9 +33,9 @@ class QueryDocsUsecase:
             if index is not None and 0 <= index < len(filtered_docs):
                 final_results.append(
                     {
-                        "text": filtered_docs[index],
+                        "query": filtered_docs[index],
                         "relevance_score": result.get("relevance_score", 0),
-                        "metadata": filtered_docs[index],
+                        "metadata": pinecone_response[index].get("metadata", {}),
                     }
                 )
 

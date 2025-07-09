@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from system.src.app.routes import insert_data_route
+from system.src.app.routes import insert_data_route, generate_drafts_route
 from system.src.app.config.database import mongodb_database
 
 @asynccontextmanager
@@ -27,6 +27,9 @@ app.add_middleware(
 
 app.include_router(
     insert_data_route.router, prefix="/api/v1", tags=["Insert Data"]
+)
+app.include_router(
+    generate_drafts_route.router, prefix="/api/v1", tags=["Generate Drafts"]
 )
 
 @app.get("/")
