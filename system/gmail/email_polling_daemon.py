@@ -13,7 +13,7 @@ from typing import Dict
 
 import httpx
 from config import settings
-from email_service import EmailService
+from system.gmail.gmail_operations_manager import EmailService
 
 # Configure logging
 logging.basicConfig(
@@ -39,18 +39,8 @@ async def process_email_async(email: Dict):
     """Process a single email asynchronously (background task)"""
     try:
         logger.info(
-            f"[BACKGROUND] Processing email from {email['sender']} - {email['subject']}"
+            f"[BACKGROUND] Processing email from {email['sender']}"
         )
-
-        # Log attachment info
-        if email["attachments"]:
-            logger.info(
-                f"[BACKGROUND] Email has {len(email['attachments'])} attachments"
-            )
-            for att in email["attachments"]:
-                logger.info(
-                    f"[BACKGROUND]   - {att['filename']} ({att['mime_type']}) {'[IMAGE]' if att['is_image'] else ''}"
-                )
 
         # Prepare request for external service
         email_data = {

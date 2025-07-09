@@ -61,8 +61,10 @@ Provide your response wrapped in the following tags:
 {{"body": "[Your drafted email response here]"}}
 ```
 
-## Example Output Structure
-```json
+NOTE: Must follow the exact format and structure as mentioned above without any additional text or comments.
+
+## Example Email Content
+```example
 Hi [Customer Name],
 
 Thank you for reaching out to rocket.new support!

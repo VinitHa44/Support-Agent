@@ -6,7 +6,7 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from typing import Dict, List, Optional
 
-from auth import GmailAuth
+from system.gmail.oauth_manager import GmailAuth
 from config import settings
 from googleapiclient.errors import HttpError
 
