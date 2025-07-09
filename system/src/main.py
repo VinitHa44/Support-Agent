@@ -15,7 +15,7 @@ async def db_lifespan(app: FastAPI):
     mongodb_database.disconnect()
 
 
-app = FastAPI(title="Rocket Classification System")
+app = FastAPI(title="Rocket Classification System", lifespan=db_lifespan)
 
 app.add_middleware(
     CORSMiddleware,

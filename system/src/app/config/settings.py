@@ -12,6 +12,14 @@ class Settings(BaseSettings):
     PINECONE_QUERY_URL: str = "https://{}/query"
     PINECONE_LIST_INDEXES_URL: str = "https://api.pinecone.io/indexes"
     PINECONE_INDEX_NAME: str = "rocket-support-agent-dataset"
+    ROCKET_DOCS_PINECONE_INDEX_NAME: str = "rocket-docs-support-agent"
+
+    # Indexing settings
+    INDEXING_SIMILARITY_METRIC: str = "dotproduct"
+
+    # Codebase indexing settings
+    EMBEDDINGS_BATCH_SIZE: int = 80
+    EMBEDDINGS_DIMENSION: int = 1024
 
     # MongoDB settings
     MONGODB_URL: str = "mongodb://localhost:27017"

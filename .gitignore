@@ -5,6 +5,7 @@ boilerplate.py
 temp/
 struct_logs/
 bm25_encoder.pkl
+session-data/
 
 
 
