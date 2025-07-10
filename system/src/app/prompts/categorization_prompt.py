@@ -50,11 +50,34 @@ You must respond with a valid JSON object containing exactly these fields:
 3. Set query_for_search to a focused search query when the customer needs specific documentation, code examples, or detailed technical explanations
 4. Set query_for_search to None for simple questions, billing issues, account management, appreciation messages, or when the query is self-contained
 5. If encountering a genuinely new type of query, use "UNKNOWN" and suggest a meaningful category name with description
-6. Be conservative with UNKNOWN - only use when the query truly doesn't fit existing categories
+6. Be strategic with UNKNOWN - create new categories when existing ones would dilute the specificity needed for proper support routing
 7. When creating new categories, the description must be highly specific and actionable. Avoid generic descriptions like "general issues" or "other problems" that would capture unrelated queries
 8. When images are provided, analyze them thoroughly and incorporate visual information into your categorization and search query
 9. For error screenshots, include specific error messages or codes in the search query
 10. For billing/subscription issues, focus on the financial aspect rather than technical implementation
+
+## When to Create New Categories:
+
+**Situational Indicators for New Category Creation:**
+
+- **When existing categories are too broad**: If placing the query in an existing category would group it with fundamentally different types of issues that require different expertise or response approaches
+
+- **When specialized knowledge is required**: If the query involves domain-specific terminology, processes, or requirements that a general support agent wouldn't be expected to understand without additional training
+
+- **When the context changes the support approach**: If two queries might seem similar on the surface but require completely different handling due to the context or stakes involved
+
+- **When regulatory or formal processes are involved**: If the query involves formal procedures, legal implications, or compliance requirements that have specific protocols different from standard technical support
+
+- **When the business relationship is unique**: If the query involves a different type of business arrangement or partnership model that doesn't fit standard customer support patterns
+
+**Examples of Situational Complexity:**
+- A user reports "app crashes" vs. a user reports "app crashes affecting medical patient monitoring system"
+- A user asks "how much does this cost?" vs. a user asks "we need pricing for 10,000 licenses with government procurement requirements"
+- A user says "AI made a mistake" vs. a user says "AI output violates content policies for children's educational content"
+- A user wants "technical documentation" vs. a user needs "compliance audit documentation for regulatory submission"
+
+**Decision Test:**
+Before creating a new category, ask: Would a support agent handling this query need significantly different knowledge, procedures, or escalation paths compared to similar-seeming queries in existing categories? If yes, create a new category.
 
 ## Examples:
 
