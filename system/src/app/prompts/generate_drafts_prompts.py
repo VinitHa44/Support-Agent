@@ -171,9 +171,4 @@ Use these previous responses as examples for tone, style, and structure:
 {reference_templates}
 
 ```
-
-### Current Email Category Details
-```
-{email_category_details}
-```
 """
