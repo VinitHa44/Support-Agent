@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from typing import Dict, List, Optional
 
 from system.gmail.oauth_manager import GmailAuth
-from config import settings
+from system.gmail.config import settings
 from googleapiclient.errors import HttpError
 
 logger = logging.getLogger(__name__)

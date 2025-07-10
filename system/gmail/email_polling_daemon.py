@@ -12,7 +12,7 @@ import sys
 from typing import Dict
 
 import httpx
-from config import settings
+from system.gmail.config import settings
 from system.gmail.gmail_operations_manager import EmailService
 
 # Configure logging
