@@ -36,17 +36,15 @@ class Settings(BaseSettings):
 
     # Gemini Settings
     GEMINI_API_KEY: str
-    GEMINI_BASE_URL: str = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-    )
+    GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/models/"
     GEMINI_COMPLETION_ENDPOINT: str = "generateContent"
     GEMINI_MODEL: str = "gemini-2.5-flash"
-    GEMINI_URL: str = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
-    )
-    GEMINI_STREAM_URL: str = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?key="
-    )
+    GEMINI_URL: str = f"{GEMINI_BASE_URL}{GEMINI_MODEL}:generateContent?key="
+    GEMINI_STREAM_URL: str = f"{GEMINI_BASE_URL}{GEMINI_MODEL}:streamGenerateContent?key="
+
+    # Gemini 2.5 Flash pricing (per million tokens)
+    GEMINI_INPUT_TOKEN_COST_PER_MILLION: float = 0.30
+    GEMINI_OUTPUT_TOKEN_COST_PER_MILLION: float = 2.50
 
     # Voyage Settings
     VOYAGEAI_API_KEY: str

@@ -91,11 +91,17 @@ class GeminiService:
                 "totalTokenCount", prompt_tokens + completion_tokens
             )
 
+            # Calculate cost based on Gemini 2.5 Flash pricing
+            input_cost = (prompt_tokens / 1_000_000) * settings.GEMINI_INPUT_TOKEN_COST_PER_MILLION
+            output_cost = (completion_tokens / 1_000_000) * settings.GEMINI_OUTPUT_TOKEN_COST_PER_MILLION
+            total_cost = input_cost + output_cost
+
             # Track LLM usage
             llm_usage = {
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
                 "total_tokens": total_tokens,
+                "cost": total_cost,
                 "duration": duration,
                 "provider": "Gemini",
                 "model": settings.GEMINI_MODEL,

@@ -70,8 +70,7 @@ class RequestLoggingUsecase:
                     if isinstance(doc, dict):
                         rocket_docs_metadata.append(
                             {
-                                "score": doc.get("score", 0),
-                                "id": doc.get("id", ""),
+                                "relevance_score": doc.get("relevance_score", 0),
                                 "metadata": doc.get("metadata", {}),
                             }
                         )
@@ -82,8 +81,7 @@ class RequestLoggingUsecase:
                     if isinstance(doc, dict):
                         dataset_metadata.append(
                             {
-                                "score": doc.get("score", 0),
-                                "id": doc.get("id", ""),
+                                "relevance_score": doc.get("relevance_score", 0),
                                 "metadata": doc.get("metadata", {}),
                             }
                         )
