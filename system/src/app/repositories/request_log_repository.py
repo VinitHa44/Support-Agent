@@ -41,6 +41,36 @@ class RequestLogRepository:
         try:
             result = await self.collection.find_one({"_id": ObjectId(log_id)})
             if result:
+                # Add default values for new fields that might be missing in existing documents
+                if "rocket_docs_count" not in result:
+                    result["rocket_docs_count"] = 0
+                if "dataset_docs_count" not in result:
+                    result["dataset_docs_count"] = 0
+                if "total_docs_retrieved" not in result:
+                    result["total_docs_retrieved"] = 0
+                if "rocket_docs_results" not in result:
+                    result["rocket_docs_results"] = []
+                if "dataset_results" not in result:
+                    result["dataset_results"] = []
+                
+                # Ensure other fields have defaults
+                if "categorization_categories" not in result:
+                    result["categorization_categories"] = []
+                if "new_categories_created" not in result:
+                    result["new_categories_created"] = []
+                if "doc_search_query" not in result:
+                    result["doc_search_query"] = None
+                if "multiple_drafts_generated" not in result:
+                    result["multiple_drafts_generated"] = False
+                if "user_reviewed" not in result:
+                    result["user_reviewed"] = False
+                if "has_new_categories" not in result:
+                    result["has_new_categories"] = False
+                if "has_attachments" not in result:
+                    result["has_attachments"] = False
+                if "required_docs" not in result:
+                    result["required_docs"] = False
+                    
                 result["id"] = str(result["_id"])
                 del result["_id"]
             return result
@@ -62,6 +92,36 @@ class RequestLogRepository:
             cursor = self.collection.find({"user_id": user_id}).sort("timestamp", -1).limit(limit)
             logs = []
             async for log in cursor:
+                # Add default values for new fields that might be missing in existing documents
+                if "rocket_docs_count" not in log:
+                    log["rocket_docs_count"] = 0
+                if "dataset_docs_count" not in log:
+                    log["dataset_docs_count"] = 0
+                if "total_docs_retrieved" not in log:
+                    log["total_docs_retrieved"] = 0
+                if "rocket_docs_results" not in log:
+                    log["rocket_docs_results"] = []
+                if "dataset_results" not in log:
+                    log["dataset_results"] = []
+                
+                # Ensure other fields have defaults
+                if "categorization_categories" not in log:
+                    log["categorization_categories"] = []
+                if "new_categories_created" not in log:
+                    log["new_categories_created"] = []
+                if "doc_search_query" not in log:
+                    log["doc_search_query"] = None
+                if "multiple_drafts_generated" not in log:
+                    log["multiple_drafts_generated"] = False
+                if "user_reviewed" not in log:
+                    log["user_reviewed"] = False
+                if "has_new_categories" not in log:
+                    log["has_new_categories"] = False
+                if "has_attachments" not in log:
+                    log["has_attachments"] = False
+                if "required_docs" not in log:
+                    log["required_docs"] = False
+                
                 log["id"] = str(log["_id"])
                 del log["_id"]
                 logs.append(log)
@@ -112,12 +172,12 @@ class RequestLogRepository:
                         },
                         "all_categories": {"$push": "$categories"},
                         
-                        # Pinecone analytics
-                        "total_docs_retrieved": {"$sum": "$total_docs_retrieved"},
-                        "rocket_docs_total": {"$sum": "$rocket_docs_count"},
-                        "dataset_docs_total": {"$sum": "$dataset_docs_count"},
+                        # Pinecone analytics with null handling
+                        "total_docs_retrieved": {"$sum": {"$ifNull": ["$total_docs_retrieved", 0]}},
+                        "rocket_docs_total": {"$sum": {"$ifNull": ["$rocket_docs_count", 0]}},
+                        "dataset_docs_total": {"$sum": {"$ifNull": ["$dataset_docs_count", 0]}},
                         "requests_with_docs": {
-                            "$sum": {"$cond": [{"$gt": ["$total_docs_retrieved", 0]}, 1, 0]}
+                            "$sum": {"$cond": [{"$gt": [{"$ifNull": ["$total_docs_retrieved", 0]}, 0]}, 1, 0]}
                         }
                     }
                 }
