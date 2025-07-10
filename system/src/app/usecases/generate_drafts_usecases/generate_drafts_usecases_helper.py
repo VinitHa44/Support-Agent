@@ -71,9 +71,15 @@ class GenerateDraftsHelper:
         for result in dataset_search_results:
             dataset_formatted += f"Query: {result.get('query', '')}\nResponse: {result.get('response', '')}\nFrom: {result.get('from', '')}\nSubject: {result.get('subject', '')}\n"
 
+        with open("intermediate_outputs/5_rocket_docs_response.txt", "w") as f:
+            f.write(rocket_docs_formatted)
+        with open("intermediate_outputs/6_dataset_response.txt", "w") as f:
+            f.write(dataset_formatted)
+
         user_prompt = GENERATE_DRAFTS_USER_PROMPT.format(
             docs_content=rocket_docs_formatted,
             email_content=f"From: {sender}\nSubject: {subject}\nBody: {body}",
             reference_templates=dataset_formatted,
         )
+
         return user_prompt

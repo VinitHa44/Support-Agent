@@ -40,7 +40,7 @@ class Settings(BaseSettings):
         "https://generativelanguage.googleapis.com/v1beta/models/"
     )
     GEMINI_COMPLETION_ENDPOINT: str = "generateContent"
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_URL: str = (
         f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
     )

@@ -45,10 +45,6 @@ class GenerateDraftsUsecase:
                     rocket_docs_response, dataset_response
                 )
             )
-            with open("5_intermediate_outputs/rocket_docs_response.json", "w") as f:
-                json.dump(rocket_docs_response, f)
-            with open("6_intermediate_outputs/dataset_response.json", "w") as f:
-                json.dump(dataset_response, f)
 
             # Prepare user prompt with formatted data
             user_prompt = self.helper.format_user_prompt(
