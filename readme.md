@@ -2,7 +2,7 @@
 
 An intelligent email assistant that automatically processes customer support emails, generates contextually appropriate draft responses, and learns from human feedback to continuously improve performance.
 
-## �� Features
+##  Features
 
 - **24/7 Email Monitoring**: Continuous Gmail polling with efficient change detection
 - **AI-Powered Categorization**: Intelligent email classification with dynamic category creation
@@ -13,7 +13,7 @@ An intelligent email assistant that automatically processes customer support ema
 - **Multimodal Support**: Text and image attachment processing
 - **Scalable Architecture**: Asynchronous processing with graceful error handling
 
-## ��️ Architecture
+##  Architecture
 
 The system consists of three main components:
 
@@ -30,7 +30,7 @@ The system consists of three main components:
 2. **Gmail Integration** (`system/gmail/`): 24/7 email monitoring and draft creation service  
 3. **Frontend Dashboard** (`system/frontend/`): React-based review interface and analytics
 
-## ��️ Technology Stack
+##  Technology Stack
 
 ### Backend
 - **Framework**: FastAPI with Python 3.8+
@@ -50,7 +50,7 @@ The system consists of three main components:
 - **Google Gemini**: Large language model for AI responses
 - **Voyage AI**: Advanced search result re-ranking
 
-## �� Prerequisites
+##  Prerequisites
 
 ### System Requirements
 - Python 3.8 or higher
@@ -129,7 +129,7 @@ mongod
 mkdir -p session-data/tokens
 ```
 
-## �� Configuration
+##  Configuration
 
 ### Environment Variables (.env)
 ```bash
@@ -152,7 +152,7 @@ Place your Gmail OAuth2 credentials in:
 
 The system will automatically handle OAuth flow on first run.
 
-## �� Running the Application
+##  Running the Application
 
 ### Starting All Services
 
@@ -215,7 +215,7 @@ curl http://localhost:3000/
 tail -f gmail_service.log
 ```
 
-## �� API Endpoints
+##  API Endpoints
 
 ### Core Endpoints
 - `POST /api/v1/generate-drafts` - Generate email draft responses
@@ -227,7 +227,7 @@ tail -f gmail_service.log
 - API documentation available at `http://localhost:8000/docs`
 - Interactive API explorer with request/response examples
 
-## �� Usage
+##  Usage
 
 ### Training Data Ingestion
 ```bash
@@ -250,7 +250,7 @@ curl -X POST "http://localhost:8000/api/v1/insert-data" \
 - **Draft Review Interface**: Side-by-side email/response comparison
 - **Edit Capabilities**: Modify drafts before approval
 
-## �� Monitoring & Analytics
+##  Monitoring & Analytics
 
 ### Key Metrics
 - Total emails processed
@@ -266,14 +266,14 @@ curl -X POST "http://localhost:8000/api/v1/insert-data" \
 - Error logging with detailed context
 - LLM usage and cost tracking
 
-## ��️ Development
+##  Development
 
 ### Adding New Features
 1. **Backend**: Add routes → controllers → use cases → services
 2. **Frontend**: Create components → update routing → integrate APIs
 3. **Gmail**: Extend email processing logic in services layer
 
-## �� Security
+##  Security
 
 ### Best Practices Implemented
 - OAuth2 for Gmail authentication
@@ -288,7 +288,7 @@ curl -X POST "http://localhost:8000/api/v1/insert-data" \
 - Secure inter-service communication
 - GDPR compliance considerations
 
-## �� Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
@@ -296,11 +296,11 @@ curl -X POST "http://localhost:8000/api/v1/insert-data" \
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
 
-## �� License
+##  License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## �� Support
+##  Support
 
 For support and questions:
 - Create an issue in the repository
