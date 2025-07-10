@@ -16,7 +16,7 @@ from system.src.app.usecases.generate_drafts_usecases.generate_drafts_usecases_h
     GenerateDraftsHelper,
 )
 from system.src.app.utils.response_parser import parse_response
-
+from system.src.app.utils.logging_utils import loggers
 
 class GenerateDraftsUsecase:
     def __init__(
@@ -93,11 +93,11 @@ class GenerateDraftsUsecase:
                 drafts = [drafts]
             else:
                 # Categories empty - generate two drafts in parallel
-                draft_task_1 = self.gemini_service.generate_response(
-                    **call_params
+                draft_task_1 = asyncio.create_task(
+                    self.gemini_service.generate_response(**call_params)
                 )
-                draft_task_2 = self.gemini_service.generate_response(
-                    **call_params
+                draft_task_2 = asyncio.create_task(
+                    self.gemini_service.generate_response(**call_params)
                 )
 
                 # Execute both tasks in parallel
@@ -189,7 +189,7 @@ class GenerateDraftsUsecase:
                     )
                 except Exception as e:
                     # Log the error but continue processing other images
-                    print(
+                    loggers["main"].error(
                         f"Warning: Failed to process image attachment '{filename}': {str(e)}"
                     )
                     continue
@@ -197,5 +197,5 @@ class GenerateDraftsUsecase:
             return images if images else None
 
         except Exception as e:
-            print(f"Warning: Failed to process attachments: {str(e)}")
+            loggers["main"].error(f"Warning: Failed to process attachments: {str(e)}")
             return None

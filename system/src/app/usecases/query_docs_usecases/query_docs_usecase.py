@@ -39,8 +39,6 @@ class QueryDocsUsecase:
         if not filtered_docs:
             return []
 
-        print(filtered_docs)
-
         reranked_results = await self.reranker_service.voyage_rerank(
             model_name=settings.VOYAGEAI_RERANKING_MODEL,
             query=query,

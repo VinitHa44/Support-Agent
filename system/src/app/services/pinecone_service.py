@@ -57,7 +57,7 @@ class PineconeService:
     async def create_index(
         self, index_name: str, dimension: int, metric: str
     ) -> Dict[str, Any]:
-        print(
+        loggers["pinecone"].info(
             f"Creating index {index_name} with dimension {dimension} and metric {metric}"
         )
         if self.pc.has_index(index_name) == False:
@@ -271,7 +271,7 @@ class PineconeService:
         namespace: str = "default",
     ):
 
-        print(f"Index host: {index_host}")
+        loggers["pinecone"].info(f"Index host: {index_host}")
         headers = {
             "Api-Key": self.pinecone_api_key,
             "Content-Type": "application/json",
@@ -358,7 +358,7 @@ class PineconeService:
                     status_code=400,
                     detail=f"Host not found in index details for {index_name}",
                 )
-            print(f"Index details: {index_details['host']}")
+            loggers["pinecone"].info(f"Index details: {index_details['host']}")
             return index_details["host"]
         except HTTPException:
             raise

@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from system.src.app.services.websocket_service import websocket_manager
-
+from system.src.app.utils.logging_utils import loggers
 router = APIRouter()
 
 
@@ -23,7 +23,9 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str = Query(...)):
                 data = await websocket.receive_text()
                 message = json.loads(data)
             except json.JSONDecodeError as e:
-                print(f"Invalid JSON received from user {user_id}: {e}")
+                loggers["websocket"].error(
+                    f"Invalid JSON received from user {user_id}: {e}"
+                )
                 await websocket_manager.send_message(
                     user_id,
                     {
@@ -33,7 +35,9 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str = Query(...)):
                 )
                 continue
             except Exception as e:
-                print(f"Error receiving message from user {user_id}: {e}")
+                loggers["websocket"].error(
+                    f"Error receiving message from user {user_id}: {e}"
+                )
                 break
 
             # Handle different message types
@@ -82,8 +86,8 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str = Query(...)):
                 )
 
     except WebSocketDisconnect:
-        print(f"WebSocket disconnected for user: {user_id}")
+        loggers["websocket"].error(f"WebSocket disconnected for user: {user_id}")
     except Exception as e:
-        print(f"WebSocket error for user {user_id}: {str(e)}")
+        loggers["websocket"].error(f"WebSocket error for user {user_id}: {str(e)}")
     finally:
         websocket_manager.disconnect(user_id)

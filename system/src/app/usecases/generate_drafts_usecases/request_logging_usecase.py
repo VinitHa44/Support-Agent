@@ -6,7 +6,7 @@ from fastapi import Depends
 from system.src.app.repositories.request_log_repository import (
     RequestLogRepository,
 )
-
+from system.src.app.utils.logging_utils import loggers
 
 class RequestLoggingUsecase:
     def __init__(
@@ -119,12 +119,7 @@ class RequestLoggingUsecase:
             print(
                 f"Request logged successfully: {request_log_data['request_id']}"
             )
-            print(f"  - Rocket docs retrieved: {rocket_docs_count}")
-            print(f"  - Dataset docs retrieved: {dataset_count}")
-            print(
-                f"  - Total docs retrieved: {rocket_docs_count + dataset_count}"
-            )
-
+        
         except Exception as e:
             # Log error but don't fail the main process
-            print(f"Warning: Failed to log request: {str(e)}")
+            loggers["main"].error(f"Warning: Failed to log request: {str(e)}")

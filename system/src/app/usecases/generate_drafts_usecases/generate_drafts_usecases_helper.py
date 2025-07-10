@@ -5,7 +5,6 @@ from system.src.app.prompts.generate_drafts_prompts import (
     GENERATE_DRAFTS_USER_PROMPT,
 )
 
-
 class GenerateDraftsHelper:
     def __init__(self):
         pass

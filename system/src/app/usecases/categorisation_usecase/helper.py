@@ -10,6 +10,7 @@ from system.src.app.prompts.categorization_prompt import (
     CATEGORIZATION_SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )
+from system.src.app.utils.logging_utils import loggers
 
 
 class CategorizationHelper:
@@ -33,7 +34,7 @@ class CategorizationHelper:
             return categories_list, categories_dict
 
         except FileNotFoundError:
-            print(
+            loggers["main"].error(
                 f"Warning: Categories file {self.categories_file_path} not found. Using fallback categories."
             )
             # Fallback categories if file not found
@@ -74,12 +75,12 @@ class CategorizationHelper:
             with open(self.categories_file_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
 
-            print(
+            loggers["main"].info(
                 f"Categories updated and saved to {self.categories_file_path}"
             )
 
         except Exception as e:
-            print(f"Warning: Failed to save categories to file: {str(e)}")
+            loggers["main"].error(f"Warning: Failed to save categories to file: {str(e)}")
 
     def add_new_category(
         self, category_name: str, category_description: str
@@ -209,7 +210,7 @@ class CategorizationHelper:
                 print(f"Successfully processed image: {filename} ({mime_type})")
             except Exception as e:
                 # Log the error but continue processing other images
-                print(
+                loggers["main"].error(
                     f"Warning: Failed to process image attachment '{filename}': {str(e)}"
                 )
                 continue
@@ -279,8 +280,8 @@ class CategorizationHelper:
                     query_for_search = None
 
             # Debug information
-            print(f"Debug - Processed categories: {categories}")
-            print(f"Debug - Query for search: {query_for_search}")
+            loggers["main"].info(f"Debug - Processed categories: {categories}")
+            loggers["main"].info(f"Debug - Query for search: {query_for_search}")
 
             # Validate categories against known categories
             valid_categories = []
