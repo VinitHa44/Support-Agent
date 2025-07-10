@@ -2,7 +2,7 @@ from typing import Dict
 
 from fastapi import Depends, HTTPException
 
-from system.src.app.usecases.draft_generation_orchestration_usecase import (
+from system.src.app.usecases.generate_drafts_usecases.draft_generation_orchestration_usecase import (
     DraftGenerationOrchestrationUsecase,
 )
 
@@ -14,12 +14,14 @@ class GenerateDraftsController:
             DraftGenerationOrchestrationUsecase
         ),
     ):
-        self.draft_generation_orchestration_usecase = draft_generation_orchestration_usecase
+        self.draft_generation_orchestration_usecase = (
+            draft_generation_orchestration_usecase
+        )
 
     async def generate_drafts(self, query: Dict, user_id: str = "default_user"):
         """
         Generate drafts and handle review process
-        
+
         :param query: Email query data
         :param user_id: User identifier for WebSocket communication
         :return: Final draft response
@@ -33,5 +35,3 @@ class GenerateDraftsController:
                 status_code=500,
                 detail=f"Error in generate drafts controller: {str(e)}",
             )
-
-

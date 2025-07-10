@@ -28,8 +28,8 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str = Query(...)):
                     user_id,
                     {
                         "type": "error",
-                        "data": {"message": "Invalid JSON format"}
-                    }
+                        "data": {"message": "Invalid JSON format"},
+                    },
                 )
                 continue
             except Exception as e:

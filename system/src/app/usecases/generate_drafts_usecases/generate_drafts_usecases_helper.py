@@ -1,5 +1,6 @@
-from typing import Dict, List, Tuple
 import json
+from typing import Dict, List, Tuple
+
 from system.src.app.prompts.generate_drafts_prompts import (
     GENERATE_DRAFTS_USER_PROMPT,
 )
@@ -42,9 +43,13 @@ class GenerateDraftsHelper:
     async def format_pinecone_results(
         self, rocket_docs_response: List[Dict], dataset_response: List[Dict]
     ) -> Tuple[List[Dict], List[Dict]]:
-        with open("intermediate_outputs/3_pinecone_rocket_docs_response.json", "w") as f:
+        with open(
+            "intermediate_outputs/3_pinecone_rocket_docs_response.json", "w"
+        ) as f:
             json.dump(rocket_docs_response, f)
-        with open("intermediate_outputs/4_pinecone_dataset_response.json", "w") as f:
+        with open(
+            "intermediate_outputs/4_pinecone_dataset_response.json", "w"
+        ) as f:
             json.dump(dataset_response, f)
         if rocket_docs_response:
             rocket_docs_response = await self.format_rocket_docs_response(
@@ -78,7 +83,7 @@ class GenerateDraftsHelper:
             dataset_formatted += f"Subject: {result.get('subject', '')}\n"
             dataset_formatted += f"Query: {result.get('query', '')}\n"
             dataset_formatted += f"Response: {result.get('response', '')}\n"
-            
+
             # Add separator if not the last example
             if idx < len(dataset_search_results):
                 dataset_formatted += "\n-----\n"
@@ -99,7 +104,7 @@ class GenerateDraftsHelper:
                 filtered_categories_data[category] = categories_data[category]
 
         formatted_categories += f"{json.dumps(filtered_categories_data)}\n"
-            
+
         with open("intermediate_outputs/7_categories.txt", "w") as f:
             f.write(formatted_categories)
 
@@ -107,7 +112,7 @@ class GenerateDraftsHelper:
             docs_content=rocket_docs_formatted,
             email_content=f"From: {sender}\nSubject: {subject}\nBody: {body}",
             reference_templates=dataset_formatted,
-            categories=formatted_categories
+            categories=formatted_categories,
         )
 
         return user_prompt

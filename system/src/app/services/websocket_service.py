@@ -11,7 +11,9 @@ from system.src.app.exceptions.websocket_exceptions import WebSocketTimeoutError
 class WebSocketManager:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
-        self.response_futures: Dict[str, List[asyncio.Future]] = defaultdict(list)
+        self.response_futures: Dict[str, List[asyncio.Future]] = defaultdict(
+            list
+        )
 
     async def connect(self, websocket: WebSocket, user_id: str):
         await websocket.accept()
@@ -36,11 +38,15 @@ class WebSocketManager:
             logging.error(f"No active WebSocket connection for user: {user_id}")
             raise ConnectionError(f"No active connection for user {user_id}")
 
-    async def wait_for_connection(self, user_id: str, timeout: int = 30) -> WebSocket:
+    async def wait_for_connection(
+        self, user_id: str, timeout: int = 30
+    ) -> WebSocket:
         """
         Waits for a WebSocket connection to be established for a specific user.
         """
-        logging.debug(f"Waiting for WebSocket connection for user: {user_id} (max {timeout}s)")
+        logging.debug(
+            f"Waiting for WebSocket connection for user: {user_id} (max {timeout}s)"
+        )
         try:
             connection = await asyncio.wait_for(
                 self._get_connection(user_id), timeout=timeout
@@ -79,7 +85,9 @@ class WebSocketManager:
             response = await asyncio.wait_for(future, timeout=timeout)
             return response, "success"
         except asyncio.TimeoutError:
-            logging.error(f"Timeout waiting for draft response from user: {user_id}")
+            logging.error(
+                f"Timeout waiting for draft response from user: {user_id}"
+            )
             return None, "timeout"
         except asyncio.CancelledError:
             logging.warning(
@@ -98,11 +106,17 @@ class WebSocketManager:
             future = self.response_futures[user_id][0]
             if not future.done():
                 future.set_result(response_data)
-                logging.debug("User response received! API route can now continue...")
+                logging.debug(
+                    "User response received! API route can now continue..."
+                )
             else:
-                logging.warning(f"Received a response for an already resolved future for user {user_id}")
+                logging.warning(
+                    f"Received a response for an already resolved future for user {user_id}"
+                )
         else:
-            logging.warning(f"Received a draft response for user {user_id}, but no pending future was found.")
+            logging.warning(
+                f"Received a draft response for user {user_id}, but no pending future was found."
+            )
 
 
 # Global WebSocket manager instance

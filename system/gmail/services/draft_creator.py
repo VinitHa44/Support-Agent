@@ -2,18 +2,21 @@ import base64
 import logging
 from email.mime.text import MIMEText
 
-from system.gmail.interfaces.interfaces import DraftCreatorInterface, AuthInterface
+from system.gmail.interfaces.interfaces import (
+    AuthInterface,
+    DraftCreatorInterface,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class DraftCreator(DraftCreatorInterface):
     """Creates draft emails in Gmail"""
-    
+
     def __init__(self, auth: AuthInterface):
         self.auth = auth
         self.gmail_service = None
-    
+
     def initialize(self) -> bool:
         """Initialize Gmail service for draft creation"""
         try:
@@ -38,9 +41,7 @@ class DraftCreator(DraftCreatorInterface):
 
             # Prepare email message
             message = {
-                "raw": self._create_message_raw(
-                    to_email, body, in_reply_to
-                )
+                "raw": self._create_message_raw(to_email, body, in_reply_to)
             }
 
             # Create draft
@@ -76,4 +77,4 @@ class DraftCreator(DraftCreatorInterface):
         raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode(
             "utf-8"
         )
-        return raw_message 
+        return raw_message

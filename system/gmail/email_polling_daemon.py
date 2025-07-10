@@ -14,10 +14,10 @@ from typing import Set
 from system.gmail.auth.oauth_manager import GmailAuth
 from system.gmail.config.settings import settings
 from system.gmail.services import (
-    HistoryManager,
-    EmailFetcher,
     DraftCreator,
-    EmailProcessor
+    EmailFetcher,
+    EmailProcessor,
+    HistoryManager,
 )
 
 # Configure logging
@@ -41,22 +41,19 @@ def signal_handler(signum, frame):
 
 class GmailPollingService:
     """Main Gmail polling service using modular architecture"""
-    
+
     def __init__(self):
         self._setup_dependencies()
-    
+
     def _setup_dependencies(self):
         """Setup services with direct dependencies"""
         # Initialize services
         self.auth = GmailAuth()
         self.history_manager = HistoryManager()
-        self.email_fetcher = EmailFetcher(
-            self.auth, 
-            self.history_manager
-        )
+        self.email_fetcher = EmailFetcher(self.auth, self.history_manager)
         self.draft_creator = DraftCreator(self.auth)
         self.email_processor = EmailProcessor(self.draft_creator)
-        
+
         logger.info("Dependencies configured successfully")
 
     async def process_email_async(self, email: dict):
@@ -65,7 +62,7 @@ class GmailPollingService:
             result = await self.email_processor.process_email(email)
             if result:
                 logger.info(f"[BACKGROUND] Email processed: {result}")
-            
+
         except Exception as e:
             logger.error(f"[BACKGROUND] Error in email processing: {e}")
 
@@ -102,7 +99,9 @@ class GmailPollingService:
                             break
 
                         # Create background task - doesn't block polling
-                        task = asyncio.create_task(self.process_email_async(email))
+                        task = asyncio.create_task(
+                            self.process_email_async(email)
+                        )
                         background_tasks.add(task)
 
                         # Clean up completed tasks to prevent memory leaks
@@ -116,7 +115,7 @@ class GmailPollingService:
                 logger.info(
                     f"[POLLING] Continuing to next poll cycle. Active background tasks: {len(background_tasks)}"
                 )
-                
+
                 # Get poll interval from settings
                 await asyncio.sleep(settings.POLL_INTERVAL_SECONDS)
 
@@ -147,4 +146,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

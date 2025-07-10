@@ -1,4 +1,5 @@
 from typing import Dict
+
 from fastapi import Depends
 
 from system.src.app.usecases.data_insert_usecases.data_insert_usecase import (
@@ -18,7 +19,7 @@ class TemplateStorageUsecase:
     ):
         """
         Store the final response as a template for future reference
-        
+
         :param categorization_response: Categorization results containing categories and email data
         :param final_draft: The final draft response to store
         :return: Result from data insert usecase
@@ -50,4 +51,4 @@ class TemplateStorageUsecase:
         except Exception as e:
             # Log the error but don't fail the main process
             print(f"Warning: Failed to store response template: {str(e)}")
-            raise e 
+            raise e

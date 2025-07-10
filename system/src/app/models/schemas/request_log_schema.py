@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel
 
 
 class RequestLogCreateSchema(BaseModel):
     """Schema for creating a new request log"""
-    
+
     request_id: str
     from_email: str
     subject: str
@@ -22,7 +23,7 @@ class RequestLogCreateSchema(BaseModel):
     doc_search_query: Optional[str] = None
     multiple_drafts_generated: bool = False
     user_reviewed: bool = False
-    
+
     # Pinecone results fields
     rocket_docs_count: int = 0
     dataset_docs_count: int = 0
@@ -33,7 +34,7 @@ class RequestLogCreateSchema(BaseModel):
 
 class RequestLogResponseSchema(BaseModel):
     """Schema for request log response"""
-    
+
     id: str
     request_id: str
     from_email: str
@@ -52,7 +53,7 @@ class RequestLogResponseSchema(BaseModel):
     doc_search_query: Optional[str]
     multiple_drafts_generated: bool
     user_reviewed: bool
-    
+
     # Pinecone results fields
     rocket_docs_count: int
     dataset_docs_count: int
@@ -63,7 +64,7 @@ class RequestLogResponseSchema(BaseModel):
 
 class RequestLogStatsSchema(BaseModel):
     """Schema for request log statistics"""
-    
+
     total_requests: int
     average_processing_time: float
     most_common_categories: List[dict]
@@ -71,8 +72,8 @@ class RequestLogStatsSchema(BaseModel):
     requests_requiring_docs: int
     new_categories_created_count: int
     user_review_rate: float
-    
+
     # Enhanced statistics with Pinecone data
     average_docs_retrieved: float
     most_retrieved_doc_types: List[dict]
-    docs_utilization_rate: float 
+    docs_utilization_rate: float

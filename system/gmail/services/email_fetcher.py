@@ -4,18 +4,20 @@ from typing import Dict, List, Optional
 
 from googleapiclient.errors import HttpError
 
-from system.gmail.interfaces.interfaces import EmailFetcherInterface, HistoryManagerInterface, AuthInterface
+from system.gmail.interfaces.interfaces import (
+    AuthInterface,
+    EmailFetcherInterface,
+    HistoryManagerInterface,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class EmailFetcher(EmailFetcherInterface):
     """Fetches emails from Gmail using efficient history API"""
-    
+
     def __init__(
-        self, 
-        auth: AuthInterface,
-        history_manager: HistoryManagerInterface
+        self, auth: AuthInterface, history_manager: HistoryManagerInterface
     ):
         self.auth = auth
         self.history_manager = history_manager
@@ -33,11 +35,15 @@ class EmailFetcher(EmailFetcherInterface):
 
             if not last_history_id:
                 # Get initial history ID from profile
-                profile = self.gmail_service.users().getProfile(userId="me").execute()
+                profile = (
+                    self.gmail_service.users().getProfile(userId="me").execute()
+                )
                 last_history_id = profile.get("historyId")
                 self.history_manager.save_history_id(last_history_id)
 
-            logger.info(f"Gmail service initialized. History ID: {last_history_id}")
+            logger.info(
+                f"Gmail service initialized. History ID: {last_history_id}"
+            )
             return True
         except Exception as e:
             logger.error(f"Failed to initialize Gmail service: {e}")
@@ -57,9 +63,11 @@ class EmailFetcher(EmailFetcherInterface):
                 logger.info(
                     "STARTUP: First polling turn - skipping email processing, just updating historyID"
                 )
-                
+
                 # Get current history ID for future polls without processing any emails
-                profile = self.gmail_service.users().getProfile(userId="me").execute()
+                profile = (
+                    self.gmail_service.users().getProfile(userId="me").execute()
+                )
                 current_history_id = profile.get("historyId")
                 self.history_manager.save_history_id(current_history_id)
 
@@ -68,7 +76,7 @@ class EmailFetcher(EmailFetcherInterface):
                 logger.info(
                     f"STARTUP: Complete. Set history ID to {current_history_id} for future polls. No emails processed on first turn."
                 )
-                
+
                 # Return empty list - no emails to process on first poll
                 new_emails = []
 
@@ -235,10 +243,12 @@ class EmailFetcher(EmailFetcherInterface):
                 return header["value"]
         return ""
 
-    def _extract_content_and_attachments(self, payload: Dict) -> tuple[str, List[Dict]]:
+    def _extract_content_and_attachments(
+        self, payload: Dict
+    ) -> tuple[str, List[Dict]]:
         """Extract email body and attachment information from payload"""
         body = ""
-        
+
         def process_part(part):
             nonlocal body
             mime_type = part.get("mimeType", "")
@@ -271,13 +281,15 @@ class EmailFetcher(EmailFetcherInterface):
 
         return body, attachments
 
-    def _get_attachment_data(self, message_id: str, attachment_id: str) -> Optional[bytes]:
+    def _get_attachment_data(
+        self, message_id: str, attachment_id: str
+    ) -> Optional[bytes]:
         """Download attachment data from Gmail"""
         try:
             if not self.gmail_service:
                 logger.error("Gmail service not available")
                 return None
-                
+
             attachment = (
                 self.gmail_service.users()
                 .messages()
@@ -360,4 +372,4 @@ class EmailFetcher(EmailFetcherInterface):
             # Single part message
             process_part(payload)
 
-        return attachments 
+        return attachments

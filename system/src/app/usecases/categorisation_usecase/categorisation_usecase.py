@@ -1,7 +1,9 @@
-from typing import Any, Dict
 import json
-from fastapi import Depends, HTTPException
 import os
+from typing import Any, Dict
+
+from fastapi import Depends, HTTPException
+
 from system.src.app.services.gemini_service import GeminiService
 from system.src.app.usecases.categorisation_usecase.helper import (
     CategorizationHelper,
@@ -71,7 +73,10 @@ class CategorizationUsecase:
             # Parse the JSON response using the response parser utility
             try:
                 categorization_result = parse_response(response_text)
-                with open("intermediate_outputs/1_categorization_llm_response.json", "w") as f:
+                with open(
+                    "intermediate_outputs/1_categorization_llm_response.json",
+                    "w",
+                ) as f:
                     json.dump(categorization_result, f)
 
                 # Ensure we have a valid dict response

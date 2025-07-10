@@ -1,18 +1,21 @@
-import re
 import logging
+import re
 from typing import Dict, Optional
 
 import httpx
 
-from system.gmail.interfaces.interfaces import EmailProcessorInterface, DraftCreatorInterface
 from system.gmail.config.settings import settings
+from system.gmail.interfaces.interfaces import (
+    DraftCreatorInterface,
+    EmailProcessorInterface,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class EmailProcessor(EmailProcessorInterface):
     """Processes emails and handles business logic"""
-    
+
     def __init__(self, draft_creator: DraftCreatorInterface):
         self.draft_creator = draft_creator
         self.settings = settings
@@ -24,7 +27,9 @@ class EmailProcessor(EmailProcessorInterface):
 
             # Check if email should be skipped
             if self._is_image_only_email(email):
-                logger.info(f"[PROCESSOR] Skipping image-only email {email.get('id', 'unknown')}")
+                logger.info(
+                    f"[PROCESSOR] Skipping image-only email {email.get('id', 'unknown')}"
+                )
                 return None
 
             # Prepare request for external service
@@ -33,7 +38,9 @@ class EmailProcessor(EmailProcessorInterface):
                 "subject": email["subject"],
                 "sender": email["sender"],
                 "body": email["body"],
-                "attachments": email["attachments"] if email["attachments"] else [],
+                "attachments": (
+                    email["attachments"] if email["attachments"] else []
+                ),
             }
 
             # Call external service to generate reply
@@ -44,11 +51,16 @@ class EmailProcessor(EmailProcessorInterface):
             if response:
                 # Check if the response should be skipped
                 is_skip = response.get("is_skip", False)
-                
+
                 if is_skip:
-                    logger.info(f"[PROCESSOR] Skipping draft creation for email {email['id']} due to is_skip=True")
-                    return {"status": "skipped", "message": "Draft creation skipped based on external service response"}
-                
+                    logger.info(
+                        f"[PROCESSOR] Skipping draft creation for email {email['id']} due to is_skip=True"
+                    )
+                    return {
+                        "status": "skipped",
+                        "message": "Draft creation skipped based on external service response",
+                    }
+
                 # Extract sender email
                 sender_email = self._extract_email_address(email["sender"])
 
@@ -61,43 +73,59 @@ class EmailProcessor(EmailProcessorInterface):
                 )
 
                 if success:
-                    logger.info(f"[PROCESSOR] Draft created for email {email['id']}")
+                    logger.info(
+                        f"[PROCESSOR] Draft created for email {email['id']}"
+                    )
                     return {"status": "success", "draft_created": True}
                 else:
-                    logger.error(f"[PROCESSOR] Failed to create draft for email {email['id']}")
-                    return {"status": "error", "message": "Failed to create draft"}
+                    logger.error(
+                        f"[PROCESSOR] Failed to create draft for email {email['id']}"
+                    )
+                    return {
+                        "status": "error",
+                        "message": "Failed to create draft",
+                    }
             else:
-                logger.warning(f"[PROCESSOR] No response from external service for email {email['id']}")
-                return {"status": "error", "message": "No response from external service"}
+                logger.warning(
+                    f"[PROCESSOR] No response from external service for email {email['id']}"
+                )
+                return {
+                    "status": "error",
+                    "message": "No response from external service",
+                }
 
         except Exception as e:
-            logger.error(f"[PROCESSOR] Error processing email {email.get('id', 'unknown')}: {e}")
+            logger.error(
+                f"[PROCESSOR] Error processing email {email.get('id', 'unknown')}: {e}"
+            )
             return {"status": "error", "message": str(e)}
 
     def _is_image_only_email(self, email: Dict) -> bool:
         """
         Check if an email should be skipped based on content.
-        
+
         Logic:
         - Only text -> process (return False)
-        - Only image -> skip (return True)  
+        - Only image -> skip (return True)
         - Both text and image -> process (return False)
         - Neither text nor image -> skip (return True)
         """
         # Check if email body has meaningful text content
         body = email.get("body", "").strip()
         has_text = bool(body)
-        
+
         # Check if email has image attachments
         attachments = email.get("attachments", [])
         has_images = any(att.get("is_image", False) for att in attachments)
-        
+
         # Skip if no text content (regardless of whether it has images or not)
         should_skip = not has_text
-        
+
         if should_skip:
             if has_images:
-                image_count = len([att for att in attachments if att.get("is_image", False)])
+                image_count = len(
+                    [att for att in attachments if att.get("is_image", False)]
+                )
                 logger.info(
                     f"Email {email.get('id', 'unknown')} from {email.get('sender', 'unknown')} "
                     f"contains only images ({image_count} images, no text). Skipping processing."
@@ -107,13 +135,15 @@ class EmailProcessor(EmailProcessorInterface):
                     f"Email {email.get('id', 'unknown')} from {email.get('sender', 'unknown')} "
                     f"has no text content or images. Skipping processing."
                 )
-        
+
         return should_skip
 
     async def _call_external_service(self, email_data: Dict) -> Optional[Dict]:
         """Generate draft reply using external service"""
         try:
-            logger.info(f"Generating draft for email: {email_data.get('id', 'no id')}")
+            logger.info(
+                f"Generating draft for email: {email_data.get('id', 'no id')}"
+            )
 
             # Prepare payload for the API
             payload = {
@@ -131,12 +161,16 @@ class EmailProcessor(EmailProcessorInterface):
                 )
             ) as client:
                 api_response = await client.post(
-                    self.settings.EXTERNAL_SERVICE_URL, json=payload, headers=headers
+                    self.settings.EXTERNAL_SERVICE_URL,
+                    json=payload,
+                    headers=headers,
                 )
                 api_response.raise_for_status()
                 response_data = api_response.json()
 
-            logger.info(f"Successfully generated draft reply for: {email_data.get('id', 'no id')}")
+            logger.info(
+                f"Successfully generated draft reply for: {email_data.get('id', 'no id')}"
+            )
             return response_data["data"]
 
         except Exception as e:
@@ -154,4 +188,4 @@ class EmailProcessor(EmailProcessorInterface):
                     if group and "@" in group:
                         return group.strip()
 
-        return from_header.strip() 
+        return from_header.strip()

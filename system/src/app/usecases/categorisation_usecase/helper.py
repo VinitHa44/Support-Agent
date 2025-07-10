@@ -234,7 +234,7 @@ class CategorizationHelper:
                 "new_category_name",
                 "new_category_description",
             ]
-            
+
             # Ensure all required fields exist with defaults
             for field in required_fields:
                 if field not in categorization_result:
@@ -245,7 +245,7 @@ class CategorizationHelper:
 
             # Validate category field and ensure it's a list
             categories = categorization_result["category"]
-            
+
             # Handle both string and list responses from Gemini
             if isinstance(categories, str):
                 # Convert single string to list
@@ -262,20 +262,22 @@ class CategorizationHelper:
                         categories = [str(categories)]
                 except:
                     categories = ["UNKNOWN"]
-                    
+
             # Ensure we have a valid non-empty list
             if not categories or len(categories) == 0:
                 categories = ["UNKNOWN"]
-            
+
             # Ensure query_for_search is properly handled
             query_for_search = categorization_result.get("query_for_search")
-            if query_for_search is not None and not isinstance(query_for_search, str):
+            if query_for_search is not None and not isinstance(
+                query_for_search, str
+            ):
                 # Convert to string if it's not None and not a string
                 try:
                     query_for_search = str(query_for_search)
                 except:
                     query_for_search = None
-            
+
             # Debug information
             print(f"Debug - Processed categories: {categories}")
             print(f"Debug - Query for search: {query_for_search}")
