@@ -42,7 +42,7 @@ You must respond with a valid JSON object containing exactly these fields:
 - "category": Array of strings - matching category names from the list above that apply to this query. If the query doesn't fit any existing category, return ["UNKNOWN"]
 - "query_for_search": String or None - if the query would benefit from documentation context, provide a focused search query optimized for semantic search in the vector database. Return None if no documentation search is needed
 - "new_category_name": String - if category contains "UNKNOWN", suggest a descriptive name for the new category (snake_case format). Otherwise, return None
-- "new_category_description": String - if category contains "UNKNOWN", provide a brief description of what this new category would cover (similar format to existing descriptions). Otherwise, return None
+- "new_category_description": String - if category contains "UNKNOWN", provide a highly specific, non-generic description of what this new category would cover. Otherwise, return None
 
 ## Guidelines:
 1. A query can belong to multiple categories (e.g., both "ai_performance_quality" and "token_economy_credit_systems")
@@ -51,11 +51,14 @@ You must respond with a valid JSON object containing exactly these fields:
 4. Set query_for_search to None for simple questions, billing issues, account management, appreciation messages, or when the query is self-contained
 5. If encountering a genuinely new type of query, use "UNKNOWN" and suggest a meaningful category name with description
 6. Be conservative with UNKNOWN - only use when the query truly doesn't fit existing categories
-7. When images are provided, analyze them thoroughly and incorporate visual information into your categorization and search query
-8. For error screenshots, include specific error messages or codes in the search query
-9. For billing/subscription issues, focus on the financial aspect rather than technical implementation
+7. When creating new categories, the description must be highly specific and actionable. Avoid generic descriptions like "general issues" or "other problems" that would capture unrelated queries
+8. When images are provided, analyze them thoroughly and incorporate visual information into your categorization and search query
+9. For error screenshots, include specific error messages or codes in the search query
+10. For billing/subscription issues, focus on the financial aspect rather than technical implementation
 
 ## Examples:
+
+**SPECIFIC QUERIES (Single Category):**
 
 Query: "I was charged $240 but wanted monthly billing, can you switch me to monthly and refund the difference?"
 Response: {{"category": ["billing_financial_management"], "query_for_search": None, "new_category_name": None, "new_category_description": None}}
@@ -63,41 +66,36 @@ Response: {{"category": ["billing_financial_management"], "query_for_search": No
 Query: "The AI keeps making the same mistakes and burning through my tokens without fixing the issues!"
 Response: {{"category": ["ai_performance_quality", "token_economy_credit_systems"], "query_for_search": "AI error loops token consumption troubleshooting", "new_category_name": None, "new_category_description": None}}
 
-Query: "Thank you for the amazing platform, you guys are fantastic!"
-Response: {{"category": ["UNKNOWN"], "query_for_search": None, "new_category_name": "appreciation_feedback", "new_category_description": "Positive feedback, thank you messages, compliments, and success stories from users"}}
+Query: "I can't log into my account, the OTP emails are not arriving in my inbox or spam folder."
+Response: {{"category": ["authentication_access_systems"], "query_for_search": "OTP email delivery login troubleshooting", "new_category_name": null, "new_category_description": null}}
 
-Query: "Can you add support for Next.js framework in the next release?"
-Response: {{"category": ["feature_requests_capabilities"], "query_for_search": None, "new_category_name": None, "new_category_description": None}}
+Query: "My app preview is showing a blank white screen instead of loading the interface."
+Response: {{"category": ["preview_testing_systems"], "query_for_search": "app preview blank screen loading issues", "new_category_name": null, "new_category_description": null}}
 
-Query: "How do I integrate my app with Stripe for payments?"
-Response: {{"category": ["integration_api_limitations"], "query_for_search": "Stripe payment integration setup API connection", "new_category_name": None, "new_category_description": None}}
+**GENERIC/MIXED QUERIES (Multiple Categories):**
 
-Query: "I can't log into my account, the OTP emails are not arriving"
-Response: {{"category": ["authentication_access_systems"], "query_for_search": "OTP email delivery login troubleshooting", "new_category_name": None, "new_category_description": None}}
+Query: "The AI keeps making the same coding mistakes and burning through my tokens without fixing the issues!"
+Response: {{"category": ["ai_performance_quality", "token_economy_credit_systems"], "query_for_search": "AI error loops token consumption troubleshooting", "new_category_name": null, "new_category_description": null}}
 
-Query: "My app preview is not loading, just shows a blank screen"
-Response: {{"category": ["preview_testing_systems"], "query_for_search": "app preview loading issues blank screen troubleshooting", "new_category_name": None, "new_category_description": None}}
+Query: "I expected the app to work immediately after publishing but it's just showing mockup data, and now I've wasted 50 tokens on something that doesn't function."
+Response: {{"category": ["user_experience_expectation", "token_economy_credit_systems"], "query_for_search": "published app functionality mock data vs real data", "new_category_name": null, "new_category_description": null}}
 
-Query: "I need help generating an APK file from my Flutter app built on Rocket"
-Response: {{"category": ["mobile_development_deployment"], "query_for_search": "Flutter APK generation mobile app deployment", "new_category_name": None, "new_category_description": None}}
+**NEW CATEGORY EXAMPLES (Highly Specific):**
 
-Query: "The platform keeps crashing when I try to open my project"
-Response: {{"category": ["platform_stability_technical"], "query_for_search": "platform crashes project loading stability issues", "new_category_name": None, "new_category_description": None}}
+Query: "There's an error in your API documentation - the example shows 'templateId' but the actual field is 'template_id'."
+Response: {{"category": ["UNKNOWN"], "query_for_search": null, "new_category_name": "documentation_feedback", "new_category_description": "Reports of errors, typos, or outdated information in official documentation, tutorials, and help articles"}}
 
-Query: "I expected the app to work immediately after publishing but it's just mockup data"
-Response: {{"category": ["user_experience_expectation"], "query_for_search": "published app functionality mock data vs real data", "new_category_name": None, "new_category_description": None}}
+Query: "I'm a journalist from TechCrunch writing about AI development platforms. Can I interview your CEO?"
+Response: {{"category": ["UNKNOWN"], "query_for_search": null, "new_category_name": "media_press_inquiries", "new_category_description": "Inquiries from journalists, media outlets, bloggers, or content creators requesting interviews, quotes, or press materials"}}
 
-Query: "Please delete my account and all associated data"
-Response: {{"category": ["account_user_management"], "query_for_search": None, "new_category_name": None, "new_category_description": None}}
+Query: "Could your legal team clarify Section 8b of your Terms of Service regarding data residency for EU customers?"
+Response: {{"category": ["UNKNOWN"], "query_for_search": null, "new_category_name": "legal_policy_inquiries", "new_category_description": "Questions directed at legal team regarding Terms of Service, Privacy Policy, data ownership, copyright, or other legal matters"}}
 
-Query: "We're interested in a white-label partnership for our enterprise clients"
-Response: {{"category": ["business_development_partnerships"], "query_for_search": None, "new_category_name": None, "new_category_description": None}}
+**INVALID NEW CATEGORY EXAMPLES (Too Generic - Don't Do This):**
 
-Query: "Getting this error when building" [Image shows terminal with "Module not found: Can't resolve './components/Header'"]
-Response: {{"category": ["ai_performance_quality"], "query_for_search": "module not found error component import resolution build troubleshooting", "new_category_name": None, "new_category_description": None}}
-
-Query: "My app layout is broken on mobile" [Image shows mobile screenshot with overlapping UI elements]
-Response: {{"category": ["ai_performance_quality"], "query_for_search": "mobile responsive design layout issues CSS styling problems", "new_category_name": None, "new_category_description": None}}"""
+Query: "I have a question about something"
+BAD Response: {{"category": ["UNKNOWN"], "query_for_search": null, "new_category_name": "general_questions", "new_category_description": "General questions about various topics"}}
+CORRECT Response: {{"category": ["unspecified_issue_inquiry"], "query_for_search": null, "new_category_name": null, "new_category_description": null}}"""
 
 # User prompt template for email categorization
 USER_PROMPT_TEMPLATE = """Subject: {subject}
