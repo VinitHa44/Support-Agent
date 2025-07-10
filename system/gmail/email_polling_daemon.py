@@ -28,6 +28,41 @@ running = True
 background_tasks = set()
 
 
+def is_image_only_email(email: Dict) -> bool:
+    """
+    Check if an email only contains images without any text content.
+    
+    Logic:
+    - Only text -> process (return False)
+    - Only image -> skip (return True)  
+    - Both text and image -> process (return False)
+    
+    Args:
+        email: Email dictionary containing body and attachments
+        
+    Returns:
+        bool: True if email should be skipped (only images), False if should be processed
+    """
+    # Check if email body has meaningful text content
+    body = email.get("body", "").strip()
+    has_text = bool(body)
+    
+    # Check if email has image attachments
+    attachments = email.get("attachments", [])
+    has_images = any(att.get("is_image", False) for att in attachments)
+    
+    # Skip only if: no text content AND has images (image-only emails)
+    should_skip = not has_text and has_images
+    
+    if should_skip:
+        image_count = len([att for att in attachments if att.get("is_image", False)])
+        logger.info(
+            f"Email {email.get('id', 'unknown')} from {email.get('sender', 'unknown')} "
+            f"contains only images ({image_count} images, no text). Skipping processing."
+        )
+    
+    return should_skip
+
 def signal_handler(signum, frame):
     """Handle shutdown signals"""
     global running
@@ -173,6 +208,13 @@ async def main():
                 for email in new_emails:
                     if not running:
                         break
+
+                    # Skip image-only emails
+                    if is_image_only_email(email):
+                        logger.info(
+                            f"[POLLING] Skipping image-only email {email.get('id', 'unknown')}"
+                        )
+                        continue
 
                     # Create background task - doesn't block polling
                     task = asyncio.create_task(process_email_async(email))
