@@ -72,8 +72,16 @@ class GenerateDraftsHelper:
 
         # Format dataset search results
         dataset_formatted = f"DATASET:\n"
-        for result in dataset_search_results:
-            dataset_formatted += f"From: {result.get('from', '')}\nSubject: {result.get('subject', '')}\nQuery: {result.get('query', '')}\nResponse: {result.get('response', '')}\n"
+        for idx, result in enumerate(dataset_search_results, 1):
+            dataset_formatted += f"example-{idx}\n"
+            dataset_formatted += f"From: {result.get('from', '')}\n"
+            dataset_formatted += f"Subject: {result.get('subject', '')}\n"
+            dataset_formatted += f"Query: {result.get('query', '')}\n"
+            dataset_formatted += f"Response: {result.get('response', '')}\n"
+            
+            # Add separator if not the last example
+            if idx < len(dataset_search_results):
+                dataset_formatted += "\n-----\n"
 
         with open("intermediate_outputs/5_rocket_docs_response.txt", "w") as f:
             f.write(rocket_docs_formatted)

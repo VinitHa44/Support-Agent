@@ -1,60 +1,56 @@
 import asyncio
-import json
-from typing import Dict, List
+import logging
+from collections import defaultdict
+from typing import Any, Dict, List, Tuple
 
 from fastapi import WebSocket
+
+from system.src.app.exceptions.websocket_exceptions import WebSocketTimeoutError
 
 
 class WebSocketManager:
     def __init__(self):
-        # Store active connections with user_id as key
         self.active_connections: Dict[str, WebSocket] = {}
-        # Store pending drafts for each user
-        self.pending_drafts: Dict[str, Dict] = {}
-        # Store response futures for each user
-        self.response_futures: Dict[str, asyncio.Future] = {}
+        self.response_futures: Dict[str, List[asyncio.Future]] = defaultdict(list)
 
     async def connect(self, websocket: WebSocket, user_id: str):
-        """Accept a WebSocket connection and store it"""
-        # Close any existing connection for this user to prevent duplicates
-        if user_id in self.active_connections:
-            try:
-                await self.active_connections[user_id].close()
-            except Exception:
-                pass  # Ignore errors when closing stale connections
-            
         await websocket.accept()
         self.active_connections[user_id] = websocket
-        print(f"WebSocket connected for user: {user_id}")
+        logging.info(f"WebSocket connected for user: {user_id}")
 
     def disconnect(self, user_id: str):
-        """Remove a WebSocket connection"""
         if user_id in self.active_connections:
             del self.active_connections[user_id]
-        if user_id in self.pending_drafts:
-            del self.pending_drafts[user_id]
         if user_id in self.response_futures:
-            # Cancel any pending futures
-            if not self.response_futures[user_id].done():
-                self.response_futures[user_id].cancel()
+            for future in self.response_futures[user_id]:
+                if not future.done():
+                    future.cancel()
             del self.response_futures[user_id]
-        print(f"WebSocket disconnected for user: {user_id}")
+        logging.info(f"WebSocket disconnected for user: {user_id}")
+
+    async def send_message(self, user_id: str, message: Dict[str, Any]):
+        if user_id in self.active_connections:
+            websocket = self.active_connections[user_id]
+            await websocket.send_json(message)
+        else:
+            logging.error(f"No active WebSocket connection for user: {user_id}")
+            raise ConnectionError(f"No active connection for user {user_id}")
 
     async def wait_for_connection(self, user_id: str, timeout: int = 30) -> WebSocket:
         """
         Waits for a WebSocket connection to be established for a specific user.
         """
-        print(f"Waiting for WebSocket connection for user: {user_id} (max {timeout}s)")
+        logging.debug(f"Waiting for WebSocket connection for user: {user_id} (max {timeout}s)")
         try:
             connection = await asyncio.wait_for(
                 self._get_connection(user_id), timeout=timeout
             )
             return connection
         except asyncio.TimeoutError:
-            print(
+            logging.error(
                 f"WebSocket connection timeout for user: {user_id} after {timeout}s"
             )
-            raise Exception(
+            raise WebSocketTimeoutError(
                 f"No WebSocket connection established for user: {user_id} within {timeout} second timeout. "
                 "Frontend may not be running or connected."
             )
@@ -63,129 +59,50 @@ class WebSocketManager:
         while user_id not in self.active_connections:
             # Check for connection every 100ms
             await asyncio.sleep(0.1)
-        print(f"WebSocket connection found for user: {user_id}")
+        logging.debug(f"WebSocket connection found for user: {user_id}")
         return self.active_connections[user_id]
 
-    async def send_draft_for_review(
-        self, user_id: str, draft_data: Dict
-    ) -> Dict:
+    async def wait_for_draft_response(
+        self, user_id: str, timeout: int = 3600
+    ) -> Tuple[Any | None, str]:
         """
-        Send draft data to frontend for review and wait for response
-
-        :param user_id: User identifier
-        :param draft_data: Draft data to send for review
-        :return: Final draft response from user
+        Waits for a response from the client for a specific draft.
+        Returns the response and a status ('success', 'timeout', or 'cancelled').
         """
-        # First, check if connection exists, if not wait for it
-        if user_id not in self.active_connections:
-            print(f"No active WebSocket connection for user: {user_id}, waiting...")
-            connection_ready = await self.wait_for_connection(user_id, max_wait_seconds=15)
-            if not connection_ready:
-                raise Exception(
-                    f"No WebSocket connection established for user: {user_id} within 15 second timeout. Frontend may not be running or connected."
-                )
-
-        websocket = self.active_connections[user_id]
-
-        # Store the draft data
-        self.pending_drafts[user_id] = draft_data
-
-        # Create a future to wait for the response
         future = asyncio.Future()
-        self.response_futures[user_id] = future
+        self.response_futures[user_id].append(future)
 
         try:
-            print(f"Sending drafts to frontend for user {user_id}...")
-
-            # Send draft data to frontend
-            try:
-                await websocket.send_text(
-                    json.dumps({"type": "draft_review", "data": draft_data})
-                )
-            except Exception as send_error:
-                # Cleanup on send failure
-                if user_id in self.response_futures:
-                    del self.response_futures[user_id]
-                if user_id in self.pending_drafts:
-                    del self.pending_drafts[user_id]
-                self.disconnect(user_id)
-                raise Exception(f"Failed to send draft to frontend: {str(send_error)}")
-
-            print(
-                f"Drafts sent. API route is now WAITING for user response (max 1 hour)..."
+            logging.debug(
+                f"API route is now WAITING for user response (max {timeout / 3600} hour(s))..."
             )
-
-            # Wait for user response (with timeout) - THIS BLOCKS THE API ROUTE
-            response = await asyncio.wait_for(
-                future, timeout=3600.0
-            )  # 1 hour timeout
-
-            print(f"User response received! API route can now continue...")
-            return (response, "success")
-
-        except asyncio.CancelledError:
-            print(f"Draft review cancelled for user {user_id} (client disconnected).")
-            # Cleanup on cancellation
-            if user_id in self.response_futures:
-                del self.response_futures[user_id]
-            if user_id in self.pending_drafts:
-                del self.pending_drafts[user_id]
-            return (None, "cancelled")
-
+            response = await asyncio.wait_for(future, timeout=timeout)
+            return response, "success"
         except asyncio.TimeoutError:
-            # Cleanup on timeout
-            if user_id in self.response_futures:
-                del self.response_futures[user_id]
-            if user_id in self.pending_drafts:
-                del self.pending_drafts[user_id]
-            raise Exception(
-                "Draft review timeout - no response received within 5 minutes"
+            logging.error(f"Timeout waiting for draft response from user: {user_id}")
+            return None, "timeout"
+        except asyncio.CancelledError:
+            logging.warning(
+                f"Wait for draft response cancelled for user: {user_id}. "
+                f"This can happen if the client disconnects."
             )
+            return None, "cancelled"
+        finally:
+            # Clean up the future from the list
+            if future in self.response_futures[user_id]:
+                self.response_futures[user_id].remove(future)
 
-        except Exception as e:
-            # Cleanup on error
-            if user_id in self.response_futures:
-                del self.response_futures[user_id]
-            if user_id in self.pending_drafts:
-                del self.pending_drafts[user_id]
-            raise e
-
-    async def handle_draft_response(self, user_id: str, response_data: Dict):
-        """
-        Handle the draft response from frontend
-
-        :param user_id: User identifier
-        :param response_data: Response data from frontend
-        """
-        if user_id in self.response_futures:
-            future = self.response_futures[user_id]
+    def handle_draft_response(self, user_id: str, response_data: Any):
+        if user_id in self.response_futures and self.response_futures[user_id]:
+            # Resolve the oldest future for this user (FIFO)
+            future = self.response_futures[user_id][0]
             if not future.done():
                 future.set_result(response_data)
-
-            # Cleanup
-            del self.response_futures[user_id]
-            if user_id in self.pending_drafts:
-                del self.pending_drafts[user_id]
-
-    async def send_message(self, user_id: str, message: Dict):
-        """Send a message to a specific user"""
-        if user_id in self.active_connections:
-            websocket = self.active_connections[user_id]
-            try:
-                await websocket.send_text(json.dumps(message))
-            except Exception as e:
-                print(f"Failed to send message to user {user_id}: {e}")
-                # Remove the stale connection
-                self.disconnect(user_id)
-
-    async def broadcast(self, message: Dict):
-        """Broadcast a message to all connected users"""
-        for websocket in self.active_connections.values():
-            await websocket.send_text(json.dumps(message))
-
-    def get_connected_users(self) -> List[str]:
-        """Get list of connected user IDs"""
-        return list(self.active_connections.keys())
+                logging.debug("User response received! API route can now continue...")
+            else:
+                logging.warning(f"Received a response for an already resolved future for user {user_id}")
+        else:
+            logging.warning(f"Received a draft response for user {user_id}, but no pending future was found.")
 
 
 # Global WebSocket manager instance

@@ -1,11 +1,16 @@
 import asyncio
+import logging
 import time
 from typing import Dict
 
 from fastapi import Depends
 
 from system.src.app.config.settings import settings
-from system.src.app.services.websocket_service import websocket_manager
+from system.src.app.exceptions.websocket_exceptions import WebSocketTimeoutError
+from system.src.app.services.websocket_service import (
+    WebSocketManager,
+    websocket_manager,
+)
 from system.src.app.usecases.categorisation_usecase.categorisation_usecase import (
     CategorizationUsecase,
 )
@@ -29,80 +34,60 @@ class DraftGenerationOrchestrationUsecase:
         categorization_usecase: CategorizationUsecase = Depends(
             CategorizationUsecase
         ),
-        request_logging_usecase: RequestLoggingUsecase = Depends(RequestLoggingUsecase),
-        template_storage_usecase: TemplateStorageUsecase = Depends(TemplateStorageUsecase),
+        request_logging_usecase: RequestLoggingUsecase = Depends(
+            RequestLoggingUsecase
+        ),
+        template_storage_usecase: TemplateStorageUsecase = Depends(
+            TemplateStorageUsecase
+        ),
+        websocket_manager: WebSocketManager = Depends(lambda: websocket_manager),
     ):
         self.generate_drafts_usecase = generate_drafts_usecase
         self.query_docs_usecase = query_docs_usecase
         self.categorization_usecase = categorization_usecase
         self.request_logging_usecase = request_logging_usecase
         self.template_storage_usecase = template_storage_usecase
+        self.websocket_manager = websocket_manager
 
-    async def execute_draft_generation_workflow(self, query: Dict, user_id: str = "default_user"):
-        """
-        Execute the complete draft generation workflow with all orchestration logic
-        
-        :param query: Email query data
-        :param user_id: User identifier for WebSocket communication
-        :return: Final draft response
-        """
-        # Start timing for performance tracking
+    async def execute_draft_generation_workflow(
+        self, query: Dict, user_id: str = "default_user"
+    ):
         start_time = time.time()
-        
-        # Add missing 'id' field required by categorization usecase
         if "id" not in query:
             query["id"] = f"api_email_{int(time.time())}"
-        
-        # Get categorization response
-        categorization_response = await self.categorization_usecase.execute(
-            query
-        )
 
+        categorization_response = await self.categorization_usecase.execute(query)
         rocket_docs_query = categorization_response.get("doc_search_query")
         dataset_query = f"Subject: {categorization_response.get('subject')}\n{categorization_response.get('body')}"
         categories = categorization_response.get("categories")
 
-        # Query documents in parallel
-        # Prepare search tasks, but only if the required data is present
         tasks = []
-
-        # Check if rocket_docs_query is present and not empty
         if rocket_docs_query and rocket_docs_query.strip():
-            rocket_docs_task = self.query_docs_usecase.query_docs(
-                rocket_docs_query, settings.ROCKET_DOCS_PINECONE_INDEX_NAME
+            tasks.append(
+                self.query_docs_usecase.query_docs(
+                    rocket_docs_query, settings.ROCKET_DOCS_PINECONE_INDEX_NAME
+                )
             )
-            tasks.append(("rocket_docs", rocket_docs_task))
         else:
-            print(
-                "Skipping rocket docs search - empty or missing doc_search_query"
-            )
+            tasks.append(asyncio.sleep(0, result=[]))
+            logging.debug("Skipping rocket docs search - empty or missing doc_search_query")
 
-        # Check if categories are present and not empty
         if categories and len(categories) > 0:
-            dataset_task = self.query_docs_usecase.query_docs(
-                dataset_query,
-                settings.PINECONE_INDEX_NAME,
-                categories=categories,
+            tasks.append(
+                self.query_docs_usecase.query_docs(
+                    dataset_query,
+                    settings.PINECONE_INDEX_NAME,
+                    categories=categories,
+                )
             )
-            tasks.append(("dataset", dataset_task))
         else:
-            print("Skipping dataset search - empty or missing categories")
+            tasks.append(asyncio.sleep(0, result=[]))
+            logging.debug("Skipping dataset search - empty or missing categories")
 
-        # Execute available tasks
-        results = {}
-        if tasks:
-            # Execute only the available tasks
-            task_names = [task[0] for task in tasks]
-            task_coroutines = [task[1] for task in tasks]
-            task_results = await asyncio.gather(*task_coroutines)
-
-            # Map results back to their names
-            for name, result in zip(task_names, task_results):
-                results[name] = result
-
-        # Get results or empty lists if tasks were skipped
-        rocket_docs_response = results.get("rocket_docs", [])
-        dataset_response = results.get("dataset", [])
+        (
+            rocket_docs_response,
+            dataset_response,
+        ) = await asyncio.gather(*tasks)
 
         generate_drafts_query = {
             "from": categorization_response.get("from"),
@@ -110,129 +95,80 @@ class DraftGenerationOrchestrationUsecase:
             "body": categorization_response.get("body"),
             "rocket_docs_response": rocket_docs_response,
             "dataset_response": dataset_response,
-            "categories": categories if categories else [],  # Ensure categories is always a list
-            # "categories": [],
-            "attachments": query.get(
-                "attachments", []
-            ),  # Pass attachments from original query
+            "categories": categories if categories else [],
+            "attachments": query.get("attachments", []),
         }
-        generate_drafts_response = (
-            await self.generate_drafts_usecase.generate_drafts(
-                generate_drafts_query
-            )
+        generated_drafts = await self.generate_drafts_usecase.generate_drafts(
+            generate_drafts_query
         )
-        # Check if drafts length > 1 for review process
-        drafts = generate_drafts_response.get("drafts", [])
 
-        if len(drafts) > 1:
-            print(
-                f"Multiple drafts generated ({len(drafts)}), sending to frontend for review..."
+        final_draft_body = ""
+        user_reviewed = False
+
+        if len(generated_drafts.get("drafts", [])) > 1:
+            logging.debug(
+                f"Multiple drafts generated ({len(generated_drafts.get('drafts', []))}), sending to frontend for review..."
             )
-            print(
-                f"Route execution PAUSED - waiting for user review via WebSocket..."
+            final_response = await self._handle_review_process(
+                user_id, generated_drafts
             )
-
-            # Send drafts to frontend for review via WebSocket
-            # THIS PAUSES ROUTE EXECUTION until user responds
-            try:
-                final_response, status = (
-                    await websocket_manager.send_draft_for_review(
-                        user_id, generate_drafts_response
-                    )
-                )
-
-                if status == "cancelled":
-                    print("Draft review was cancelled by user (disconnected). Falling back to first draft.")
-                    raise Exception("User disconnected")
-                
-                print(f"Route execution RESUMED - user review completed")
-                print(
-                    f"Final user choice received, returning to calling service"
-                )
-
-                # Store the final response as a template before returning
-                try:
-                    await self.template_storage_usecase.store_response_template(
-                        categorization_response, final_response.get("body", "")
-                    )
-                except Exception as e:
-                    # Log the error but don't fail the main process
-                    print(
-                        f"Warning: Failed to store final response template: {str(e)}"
-                    )
-
-                # Log the request before returning
-                processing_time = time.time() - start_time
-                await self.request_logging_usecase.log_request(
-                    query, 
-                    categorization_response, 
-                    final_response.get("body", ""),
-                    processing_time,
-                    user_id,
-                    rocket_docs_response,
-                    dataset_response,
-                    multiple_drafts_generated=True,
-                    user_reviewed=True
-                )
-
-                # Return the final user-selected draft to the calling service (e.g., Gmail)
-                return {"body": final_response.get("body", "")}
-
-            except Exception as e:
-                # If WebSocket fails, return the first draft as fallback
-                print(
-                    f"WebSocket error: {str(e)} - falling back to first draft"
-                )
-                print("Common causes: Frontend not connected, network issues, or connection timeout")
-                fallback_draft = (
-                    drafts[0] if drafts else "No draft available"
-                )
-
-                # Store the fallback response as a template before returning
-                try:
-                    await self.template_storage_usecase.store_response_template(
-                        categorization_response, fallback_draft
-                    )
-                except Exception as e:
-                    # Log the error but don't fail the main process
-                    print(
-                        f"Warning: Failed to store fallback response template: {str(e)}"
-                    )
-
-                # Log the request before returning
-                processing_time = time.time() - start_time
-                await self.request_logging_usecase.log_request(
-                    query, 
-                    categorization_response, 
-                    fallback_draft,
-                    processing_time,
-                    user_id,
-                    rocket_docs_response,
-                    dataset_response,
-                    multiple_drafts_generated=True,
-                    user_reviewed=False
-                )
-
-                return {"body": fallback_draft}
+            final_draft_body = final_response.get("drafts", [""])[0]
+            user_reviewed = True  # This path is only taken if a review happened
         else:
-            # Single draft or no drafts - return directly (no review needed)
-            print(
-                f"Single draft generated, returning directly without review"
-            )
-            single_draft = drafts[0] if drafts else "No draft available"
+            logging.debug("Single draft generated, returning directly without review")
+            final_response = generated_drafts
+            final_draft_body = final_response.get("drafts", [""])[0]
 
-            # Log the request before returning
-            processing_time = time.time() - start_time
-            await self.request_logging_usecase.log_request(
-                query, 
-                categorization_response, 
-                single_draft,
-                processing_time,
-                user_id,
-                rocket_docs_response,
-                dataset_response,
-                multiple_drafts_generated=False,
-                user_reviewed=False
+        try:
+            await self.template_storage_usecase.store_response_template(
+                categorization_response, final_draft_body
+            )
+        except Exception as e:
+            logging.warning(f"Failed to store final response template: {e}")
+
+        processing_time = time.time() - start_time
+        await self.request_logging_usecase.log_request(
+            query,
+            categorization_response,
+            final_draft_body,
+            processing_time,
+            user_id,
+            rocket_docs_response,
+            dataset_response,
+            multiple_drafts_generated=len(generated_drafts.get("drafts", [])) > 1,
+            user_reviewed=user_reviewed,
+        )
+
+        return {"body": final_draft_body}
+
+    async def _handle_review_process(self, user_id: str, draft_data: Dict) -> Dict:
+        try:
+            await self.websocket_manager.wait_for_connection(user_id)
+            logging.debug(f"Sending drafts to frontend for user {user_id}...")
+            await self.websocket_manager.send_message(
+                user_id, {"type": "draft_review", "data": draft_data}
             )
 
-            return {"body": single_draft} 
+            response, status = await self.websocket_manager.wait_for_draft_response(
+                user_id
+            )
+
+            if status == "success" and response:
+                logging.debug("Route execution RESUMED - user review completed")
+                final_draft = response.get("body", "")
+                return {**draft_data, "drafts": [final_draft]}
+            else:
+                logging.warning(
+                    f"WebSocket error: {status} - falling back to first draft"
+                )
+                first_draft = draft_data.get("drafts", [""])[0]
+                return {**draft_data, "drafts": [first_draft]}
+
+        except WebSocketTimeoutError as e:
+            logging.error(f"WebSocket error: {e} - falling back to first draft")
+            first_draft = draft_data.get("drafts", [""])[0]
+            return {**draft_data, "drafts": [first_draft]}
+        except Exception as e:
+            logging.error(f"An unexpected error occurred during draft review: {e}")
+            first_draft = draft_data.get("drafts", [""])[0]
+            return {**draft_data, "drafts": [first_draft]} 

@@ -11,9 +11,10 @@ interface DraftData {
 interface DraftReviewPanelProps {
   draftData: DraftData;
   onSend: (draft: string) => void;
+  queueCount: number;
 }
 
-const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend }) => {
+const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, queueCount }) => {
   const [selectedDraftIndex, setSelectedDraftIndex] = useState(0);
   const [editedDraft, setEditedDraft] = useState(draftData.drafts[0] || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -83,8 +84,15 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend }
               <p className="text-sm text-gray-500">Review, edit, and send the best response</p>
             </div>
           </div>
-          <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
-            {draftData.drafts.length} DRAFTS
+          <div className="flex items-center space-x-2">
+            {queueCount > 1 && (
+              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
+                {queueCount - 1} more pending
+              </span>
+            )}
+            <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
+              {draftData.drafts.length} DRAFTS
+            </div>
           </div>
         </div>
 
