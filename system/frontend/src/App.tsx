@@ -5,31 +5,34 @@ import 'react-toastify/dist/ReactToastify.css';
 import Navigation from './components/Navigation';
 import DraftReviewPage from './pages/DraftReviewPage';
 import Dashboard from './components/Dashboard';
+import { DarkModeProvider } from './contexts/DarkModeContext';
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        
-        <Routes>
-          <Route path="/" element={<DraftReviewPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
-        
-        <ToastContainer 
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
-      </div>
-    </Router>
+    <DarkModeProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+          <Navigation />
+          
+          <Routes>
+            <Route path="/" element={<DraftReviewPage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Routes>
+          
+          <ToastContainer 
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+          />
+        </div>
+      </Router>
+    </DarkModeProvider>
   );
 }
 

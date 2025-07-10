@@ -36,80 +36,80 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
   };
 
   const InfoCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
-    <div className="bg-white p-4 rounded-lg border border-gray-200">
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
       <div className="flex items-center mb-2">
         {icon}
-        <h3 className="text-sm font-semibold text-gray-600 ml-2">{title}</h3>
+        <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 ml-2">{title}</h3>
       </div>
-      <div className="text-sm text-gray-900">{children}</div>
+      <div className="text-sm text-gray-900 dark:text-gray-100">{children}</div>
     </div>
   );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
       {/* Left Column: Incoming Email */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-6">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-6">
         <div className="flex items-center">
-          <div className="bg-gray-100 p-3 rounded-full mr-4">
-            <Mail className="h-6 w-6 text-gray-600" />
+          <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-full mr-4">
+            <Mail className="h-6 w-6 text-gray-600 dark:text-gray-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Incoming Email</h2>
-            <p className="text-sm text-gray-500">The original email from the customer</p>
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Incoming Email</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">The original email from the customer</p>
           </div>
         </div>
         
         <div className="space-y-4">
-          <InfoCard icon={<User size={16} className="text-gray-500" />} title="From">
+          <InfoCard icon={<User size={16} className="text-gray-500 dark:text-gray-400" />} title="From">
             {draftData.from}
           </InfoCard>
-          <InfoCard icon={<FileText size={16} className="text-gray-500" />} title="Subject">
+          <InfoCard icon={<FileText size={16} className="text-gray-500 dark:text-gray-400" />} title="Subject">
             {draftData.subject}
           </InfoCard>
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-600 mb-2">Content</h3>
-          <div className="bg-gray-50 p-4 rounded-md border text-sm text-gray-700 max-h-96 overflow-y-auto">
+          <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Content</h3>
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md border dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 max-h-96 overflow-y-auto">
             <pre className="whitespace-pre-wrap font-sans">{draftData.body}</pre>
           </div>
         </div>
       </div>
 
       {/* Right Column: AI Response */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-6">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <div className="bg-gray-100 p-3 rounded-full mr-4">
-              <CheckCircle className="h-6 w-6 text-gray-600" />
+            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-full mr-4">
+              <CheckCircle className="h-6 w-6 text-gray-600 dark:text-gray-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-800">AI Response</h2>
-              <p className="text-sm text-gray-500">Review, edit, and send the best response</p>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white">AI Response</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Review, edit, and send the best response</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
             {queueCount > 1 && (
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
+              <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full text-xs font-semibold">
                 {queueCount - 1} more pending
               </span>
             )}
-            <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
+            <div className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-xs font-semibold">
               {draftData.drafts.length} DRAFTS
             </div>
           </div>
         </div>
 
         {/* Draft Tabs */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-gray-200 dark:border-gray-700">
           {draftData.drafts.map((_, index) => (
             <button
               key={index}
               onClick={() => handleDraftSelect(index)}
               className={`px-4 py-2 text-sm font-semibold transition-colors duration-200 ${
                 selectedDraftIndex === index
-                  ? 'border-b-2 border-gray-800 text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-2 border-gray-800 dark:border-gray-200 text-gray-900 dark:text-white'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               Draft {index + 1}
@@ -122,7 +122,7 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
           <div className="flex justify-end mb-2">
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="flex items-center px-3 py-1.5 rounded-md text-xs font-semibold transition-colors duration-200 bg-gray-100 hover:bg-gray-200 text-gray-700"
+              className="flex items-center px-3 py-1.5 rounded-md text-xs font-semibold transition-colors duration-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
             >
               <Edit2 size={12} className="mr-1.5" />
               {isEditing ? 'Preview' : 'Edit'}
@@ -134,12 +134,12 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
               <textarea
                 value={editedDraft}
                 onChange={(e) => setEditedDraft(e.target.value)}
-                className="w-full h-64 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 text-sm leading-relaxed"
+                className="w-full h-64 p-4 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-500 dark:focus:ring-gray-400 text-sm leading-relaxed"
                 placeholder="Edit your draft..."
               />
             ) : (
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800 leading-relaxed">
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-100 dark:border-gray-600">
+                <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
                   {editedDraft}
                 </pre>
               </div>
@@ -148,14 +148,14 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
             <button
               onClick={() => {
                 setEditedDraft(draftData.drafts[selectedDraftIndex]);
                 setIsEditing(false);
               }}
-              className="flex items-center px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+              className="flex items-center px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
             >
               <RotateCcw size={14} className="mr-2" />
               Reset
@@ -163,7 +163,7 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
             
             <button
               onClick={handleCancelDraft}
-              className="flex items-center px-4 py-2 text-sm font-semibold text-gray-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors duration-200 border border-red-200"
+              className="flex items-center px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-red-100 dark:bg-red-900 rounded-lg hover:bg-red-200 dark:hover:bg-red-800 transition-colors duration-200 border border-red-200 dark:border-red-800"
             >
               <X size={14} className="mr-2" />
               Cancel
@@ -173,7 +173,7 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
           <button
             onClick={handleSendDraft}
             disabled={!editedDraft.trim()}
-            className="inline-flex items-center px-6 py-2.5 text-sm font-semibold text-white bg-gray-800 rounded-lg hover:bg-gray-900 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+            className="inline-flex items-center px-6 py-2.5 text-sm font-semibold text-white bg-gray-800 dark:bg-gray-200 dark:text-gray-800 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-300 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-200"
           >
             Send Final Draft
             <Send size={14} className="ml-2" />

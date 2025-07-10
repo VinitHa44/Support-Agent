@@ -77,7 +77,7 @@ const DraftReviewPage: React.FC = () => {
     if ('Notification' in window && Notification.permission === 'granted') {
       const notification = new Notification(title, {
         body,
-        icon: icon || '/favicon.ico',
+        icon: icon || undefined,
         tag: 'draft-review',
         silent: false
       });
@@ -199,8 +199,7 @@ const DraftReviewPage: React.FC = () => {
         // Send Chrome notification
         sendChromeNotification(
           'New Draft Ready for Review',
-          `Subject: ${message.data.subject}\nFrom: ${message.data.from_email}`,
-          '/favicon.ico'
+          `Subject: ${message.data.subject}\nFrom: ${message.data.from_email}`
         );
         
         // Show browser notification if supported
@@ -287,21 +286,21 @@ const DraftReviewPage: React.FC = () => {
   const currentDraft = draftQueue[currentDraftIndex];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="bg-white border border-gray-200 p-2 rounded-full mr-4">
-                  <RefreshCw className="h-6 w-6 text-gray-500" />
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 rounded-full mr-4">
+                  <RefreshCw className="h-6 w-6 text-gray-500 dark:text-gray-400" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-800">
+                  <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
                     AI Draft Review
                   </h1>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Review and approve AI-generated email responses.
                   </p>
                 </div>
@@ -316,24 +315,24 @@ const DraftReviewPage: React.FC = () => {
             <div className="space-y-6">
               {/* Draft Navigation */}
               {draftQueue.length > 1 && (
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <span className="text-sm font-semibold text-gray-700">
+                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                         Draft {currentDraftIndex + 1} of {draftQueue.length}
                       </span>
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => navigateToDraft(currentDraftIndex - 1)}
                           disabled={currentDraftIndex === 0}
-                          className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                         >
                           ← Previous
                         </button>
                         <button
                           onClick={() => navigateToDraft(currentDraftIndex + 1)}
                           disabled={currentDraftIndex === draftQueue.length - 1}
-                          className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                         >
                           Next →
                         </button>
@@ -347,7 +346,7 @@ const DraftReviewPage: React.FC = () => {
                           className={`w-3 h-3 rounded-full transition-colors duration-200 ${
                             index === currentDraftIndex
                               ? 'bg-blue-500'
-                              : 'bg-gray-300 hover:bg-gray-400'
+                              : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
                           }`}
                           title={`Go to draft ${index + 1}`}
                         />
@@ -364,21 +363,21 @@ const DraftReviewPage: React.FC = () => {
               />
             </div>
           ) : (
-            <div className="text-center py-20 px-6 bg-white rounded-lg border border-gray-200">
-              <div className="bg-gray-100 rounded-full p-5 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                <RefreshCw className="h-12 w-12 text-gray-400" />
+            <div className="text-center py-20 px-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-5 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                <RefreshCw className="h-12 w-12 text-gray-400 dark:text-gray-500" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">
                 Waiting for new drafts...
               </h2>
-              <p className="text-sm text-gray-500 max-w-sm mx-auto">
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
                 When a new email is processed and requires your review, it will appear here automatically. Ensure your connection is active.
               </p>
               {!isConnected && (
                 <div className="mt-6">
                   <button
                     onClick={manualReconnect}
-                    className="flex items-center mx-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 text-sm font-semibold border border-gray-200"
+                    className="flex items-center mx-auto px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 text-sm font-semibold border border-gray-200 dark:border-gray-600"
                   >
                     <RefreshCw size={14} className="mr-2" />
                     Attempt to Reconnect

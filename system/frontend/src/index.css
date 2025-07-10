@@ -25,6 +25,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
 code {
@@ -44,9 +45,20 @@ code {
   overflow-x: auto;
 }
 
+.dark .prose pre {
+  background-color: #374151;
+  border: 1px solid #4b5563;
+  color: #f3f4f6;
+}
+
 .prose code {
   background-color: #f8f9fa;
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
+}
+
+.dark .prose code {
+  background-color: #374151;
+  color: #f3f4f6;
 } 
