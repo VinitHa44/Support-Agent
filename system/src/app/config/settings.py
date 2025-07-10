@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     GEMINI_COMPLETION_ENDPOINT: str = "generateContent"
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_URL: str = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
     )
     GEMINI_STREAM_URL: str = (
         f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?key="
