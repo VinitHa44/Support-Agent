@@ -1,307 +1,247 @@
-# Rocket Support Agent
+# AI Support Agent System
 
-An intelligent email assistant that automatically processes customer support emails, generates contextually appropriate draft responses, and learns from human feedback to continuously improve performance.
+## Brief Introduction
 
-##  Features
+The AI Support Agent System is an intelligent customer support automation platform designed for Rocket.new - a no-code application development platform. This system automatically monitors Gmail for incoming customer support emails, processes them using AI, and generates contextual draft responses for human review and approval.
 
-- **24/7 Email Monitoring**: Continuous Gmail polling with efficient change detection
-- **AI-Powered Categorization**: Intelligent email classification with dynamic category creation
-- **Contextual Response Generation**: Multi-modal AI responses using documentation and historical data
-- **Human-in-the-Loop Review**: Real-time WebSocket-based draft review system
-- **Continuous Learning**: Automatic storage of approved responses for future training
-- **Comprehensive Analytics**: Performance tracking and trend analysis dashboard
-- **Multimodal Support**: Text and image attachment processing
-- **Scalable Architecture**: Asynchronous processing with graceful error handling
+## What It Does
 
-##  Architecture
+The system operates as a 24/7 automated support agent that:
 
-The system consists of three main components:
+- **Monitors Gmail**: Continuously polls Gmail for new customer support emails
+- **Categorizes Emails**: Uses Google Gemini AI to automatically classify emails by type and urgency
+- **Searches Documentation**: Retrieves relevant documentation and historical examples from vector databases
+- **Generates Drafts**: Creates contextual, professional email draft responses using AI
+- **Human Review**: Sends drafts to a web interface for human review, editing, and approval
+- **Creates Gmail Drafts**: Automatically creates approved drafts in Gmail for sending
 
+## Key Features
+
+- 🤖 **AI-Powered Email Processing**: Automatic categorization and content analysis using Google Gemini 2.5 Flash
+- 📚 **Smart Documentation Search**: Vector database integration with Pinecone and Voyage AI reranking
+- 💬 **Real-time Draft Review**: React-based interface with WebSocket communication and multi-draft comparison
+- 📊 **Analytics Dashboard**: Request logging, performance metrics, and category analysis
+- 🔄 **Workflow Integration**: Non-blocking email processing with seamless Gmail OAuth2 integration
+
+## System Architecture
+![System Architecture Diagram](system/static/assets/system-architecture.svg)
+
+### Technical Architecture
+
+#### **Core Components**
+1. **Gmail Polling Daemon** (`system/gmail/email_polling_daemon.py`)
+   - 24/7 email monitoring using Gmail History API
+   - OAuth2 authentication and token management
+   - Non-blocking background email processing
+
+2. **FastAPI Backend** (`system/src/main.py`)
+   - RESTful API endpoints for draft generation
+   - WebSocket server for real-time communication
+   - MongoDB integration for logging and analytics
+
+3. **React Frontend** (`system/frontend/`)
+   - TypeScript-based draft review interface  
+   - Real-time WebSocket communication
+   - Multi-draft comparison and editing tools
+
+#### **Data Flow**
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Gmail Service  │◄──►│  Backend API    │◄──►│   Frontend      │
-│  (Polling)      │    │  (FastAPI)      │    │   (React)       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+Gmail Email → Categorization → Documentation Search → Draft Generation → Human Review → Gmail Draft
 ```
 
-### Components
+#### **Technology Stack**
 
-1. **Backend API** (`system/src/`): FastAPI server handling AI orchestration and business logic
-2. **Gmail Integration** (`system/gmail/`): 24/7 email monitoring and draft creation service  
-3. **Frontend Dashboard** (`system/frontend/`): React-based review interface and analytics
+**Backend:**
+- **Framework**: FastAPI (Python)
+- **AI/ML**: Google Gemini 2.5 Flash, Voyage AI
+- **Vector DB**: Pinecone
+- **Database**: MongoDB
+- **Email**: Gmail API with OAuth2
+- **WebSocket**: FastAPI WebSocket
 
-##  Technology Stack
-
-### Backend
-- **Framework**: FastAPI with Python 3.8+
-- **Database**: MongoDB (analytics), Pinecone (vector embeddings)
-- **AI/ML**: Google Gemini LLM, Voyage AI re-ranking
-- **Communication**: WebSocket for real-time updates
-
-### Frontend
+**Frontend:**
 - **Framework**: React 18 with TypeScript
 - **Styling**: Tailwind CSS
-- **Charts**: Recharts for analytics
-- **Communication**: WebSocket + REST API
+- **Icons**: Lucide React
+- **Notifications**: React Toastify
+- **Charts**: Recharts
 
-### External Services
-- **Gmail API**: Email access and draft creation
-- **Pinecone**: Vector database for knowledge retrieval
-- **Google Gemini**: Large language model for AI responses
-- **Voyage AI**: Advanced search result re-ranking
+**External Services:**
+- **Google Gemini**: AI categorization and draft generation
+- **Pinecone**: Vector database for documentation search
+- **Voyage AI**: Search result reranking
+- **Gmail API**: Email monitoring and draft creation
+- **MongoDB**: Logging and analytics storage
 
-##  Prerequisites
+## Installation and Setup
 
-### System Requirements
-- Python 3.8 or higher
-- Node.js 16 or higher
-- MongoDB 4.4 or higher
-- Gmail account with API access
+### Prerequisites
 
-### Required Files
-- **BKL Encoder Model**: Download `bm25_encoder.pkl` from [Google Drive](https://drive.google.com/file/d/1jhE3lhpypOgVW-aA5VO1DkBNenzoNg3o/view?usp=drive_link) and place in root directory
+- **Python 3.11** with pip
+- **Node.js 16+** with npm
+- **Gmail account** with API access
+- **Google Cloud Project** with Gmail API enabled
+- **API Keys** for Gemini, Pinecone, and Voyage AI
 
-### API Keys & Services
-- Gmail API credentials (OAuth2)
-- Pinecone API key and indexes
-- Google Gemini API key
-- Voyage AI API key
-- MongoDB connection string
+### Step 1: Clone Repository
 
-## ⚙️ Installation & Setup
-
-### 1. Clone Repository
 ```bash
-git clone <repository-url>
-cd support-agent
+git clone https://gitlab.dhiwise.com/internship_program_2025/hackathon-3/support-agent-team-1.git
+cd support-agent-team-1
 ```
 
-**Project Structure After Setup:**
-```
-support-agent/
-├── bm25_encoder.pkl         # ← Download this file here
-├── system/
-│   ├── src/                 # Backend API
-│   ├── gmail/               # Gmail integration
-│   └── frontend/            # React dashboard
-├── session-data/
-│   └── tokens/              # OAuth credentials
-└── requirements.txt
-```
+### Step 2: Python Backend Setup
 
-### 2. Backend Setup
+1. **Create virtual environment:**
 ```bash
-# Install Python dependencies
+python3.11 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+2. **Install dependencies:**
+```bash
 pip install -r requirements.txt
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your API keys and configuration
 ```
 
-### 3. Frontend Setup
+3. **Create required directories:**
 ```bash
-cd system/frontend
-npm install
-cd ../..
-```
-
-### 4. Gmail API Setup
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing one
-3. Enable Gmail API
-4. Create OAuth2 credentials
-5. Download credentials.json to `session-data/tokens/credentials.json`
-
-### 5. Download Required Model File
-```bash
-# Download the BKL encoder model file
-# Download from: https://drive.google.com/file/d/1jhE3lhpypOgVW-aA5VO1DkBNenzoNg3o/view?usp=drive_link
-# Place the downloaded file in the root directory as: bm25_encoder.pkl
-```
-
-### 6. Database Setup
-```bash
-# Start MongoDB (if running locally)
-mongod
-
-# Create required directories
 mkdir -p session-data/tokens
 ```
 
-##  Configuration
+### Step 3: Required Files from Google Drive
 
-### Environment Variables (.env)
-```bash
-# Pinecone Configuration
+**IMPORTANT**: You need to obtain these files from the project's Google Drive and place them in the correct locations:
+
+📁 **Google Drive Link**: [Access Required Files Here](https://drive.google.com/drive/folders/1hZCvJH2n0Bibgr_pPu3KDRH9lWyULOx0?usp=sharing) *(Link will be provided separately)*
+
+#### 3.1 Gmail Credentials
+- **File**: `credentials.json`
+- **Location**: `session-data/tokens/credentials.json`
+- **Purpose**: Gmail API OAuth2 credentials
+- **How to get (If not available in the GDrive)**:
+  1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+  2. Create/select a project
+  3. Enable Gmail API
+  4. Create OAuth2 credentials (Desktop application)
+  5. Download the JSON file and rename to `credentials.json`
+
+#### 3.2 Categories Configuration
+- **File**: `categories.json`
+- **Location**: `session-data/categories.json`
+- **Purpose**: Email categorization system configuration
+- **Format**:
+```json
+{
+  "categories": {
+    "billing_financial_management": "Customer billing and payment issues",
+    "ai_performance_quality": "AI model performance and quality issues",
+    "platform_stability_technical": "Technical platform stability issues"
+  }
+}
+```
+
+#### 3.3 BM25 Search Model
+- **File**: `bm25_encoder.pkl`
+- **Location**: `bm25_encoder.pkl` (root directory)
+- **Purpose**: BM25 search algorithm for hybrid search functionality
+- **Note**: This is a pickled Python object for text search
+
+### Step 4: Environment Variables Setup
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# Pinecone Settings (Vector Database)
 PINECONE_API_KEY=your_pinecone_api_key
 
-# OpenAI Configuration (optional)
-OPENAI_API_KEY=your_openai_api_key
-
-# Gemini Configuration
+# Google Gemini AI Settings
 GEMINI_API_KEY=your_gemini_api_key
 
-# Voyage AI Configuration
-VOYAGEAI_API_KEY=your_voyage_api_key
+# Voyage AI Settings (Reranking)
+VOYAGEAI_API_KEY=your_voyageai_api_key
+
+# OpenAI Settings (Optional)
+OPENAI_API_KEY=your_openai_api_key
+
+# MongoDB Settings
+MONGODB_URL=mongodb://localhost:27017
+MONGODB_DB_NAME=rocket-support-agent
 ```
 
-### Gmail Configuration
-Place your Gmail OAuth2 credentials in:
-- `session-data/tokens/credentials.json`
+### Step 5: Frontend Setup
 
-The system will automatically handle OAuth flow on first run.
-
-##  Running the Application
-
-### Starting All Services
-
-Follow these steps to start all system components in the correct order:
-
-#### Step 1: Verify Prerequisites
+1. **Navigate to frontend directory:**
 ```bash
-# Check Python version (3.8+)
-python --version
-
-# Check Node.js version (16+)  
-node --version
-
-# Verify MongoDB is running
-mongosh --eval "db.runCommand('ping')"
-```
-
-#### Step 2: Start Backend API Server
-```bash
-# Start the FastAPI server
-uvicorn system.src.main:app --reload 
-
-# Verify server is running
-curl http://localhost:8000/health
-```
-*Backend API will be available at `http://localhost:8000`*
-
-#### Step 3: Start Frontend Dashboard
-```bash
-# Open new terminal and navigate to frontend
 cd system/frontend
+```
 
-# Start the React development server
+2. **Install dependencies:**
+```bash
+npm install
+```
+
+## Running the System
+
+### Starting Components (Correct Order)
+
+#### 1. Start FastAPI Backend (from root directory)
+```bash
+# Activate virtual environment first
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Start the FastAPI server
+uvicorn system.src.main:app --host 0.0.0.0 --port 8000
+```
+
+The backend will be available at: `http://localhost:8000`
+
+#### 2. Start Frontend (from system/frontend folder)
+```bash
+cd system/frontend
 npm start
-
-# Dashboard will automatically open in browser
 ```
-*Frontend dashboard will be available at `http://localhost:3000`*
 
-#### Step 4: Start Gmail Polling Service
+The frontend will be available at: `http://localhost:3000`
+
+#### 3. Start Gmail Polling Daemon (from root directory)
 ```bash
-# Start the email polling daemon
+# In a new terminal, activate virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Start the Gmail polling service
 python -m system.gmail.email_polling_daemon
-
-# Service will run continuously and log email processing
 ```
 
-### Service Status Verification
+## Workflow Integration
 
-After starting all services, verify they're running correctly:
+### User Workflow Scenarios
 
-```bash
-# Check backend health
-curl http://localhost:8000/
+#### **📧 Standard Email Processing**
+1. **New Email Arrives** → System auto-categorizes and generates 1-2 drafts
+2. **Browser Notification** → Support agent receives real-time alert  
+3. **Review Interface** → System opens frontend, human reviewer reviews email context and AI-generated drafts
+4. **Edit if Needed** → Human reviewer modifies draft content directly in the interface
+5. **Approve & Send** → Agent clicks "Send Final Draft" → Gmail draft created for sending
 
-# Check frontend (should show React app)
-curl http://localhost:3000/
+#### **🔄 Multiple Drafts Scenario**
+- **Complex Issues**: System generates 2 alternative draft responses
+- **Comparison View**: Human reviewer sees side-by-side draft options with different approaches
+- **Selection**: Human reviewer chooses best draft or combines elements from both
+- **Refinement**: Edit selected draft before approval
 
-# Check Gmail service logs
-tail -f gmail_service.log
-```
+#### **🛠️ Edge Cases**
+- **Unclear Emails**: System flags for manual review with category suggestions
+- **Image Attachments**: AI analyzes screenshots/errors and incorporates visual context
+- **Follow-up Emails**: System recognizes email threads and maintains conversation context
 
-##  API Endpoints
+## 📚 Approach Documentation
 
-### Core Endpoints
-- `POST /api/v1/generate-drafts` - Generate email draft responses
-- `POST /api/v1/insert-data` - Add training data to vector database
-- `GET /api/v1/request-logs/stats` - Analytics and performance metrics
-- `WebSocket /api/v1/ws/drafts` - Real-time draft review communication
+[Approach Documentation](https://grizzly-stargazer-98d.notion.site/Velocity-new-22864f7761058047b4b7e604bafaf92c?source=copy_link)
 
-### Documentation
-- API documentation available at `http://localhost:8000/docs`
-- Interactive API explorer with request/response examples
+<div align="center">
+  <strong>Built with ❤️ by the team email support agent</strong>
+  <br>
+</div>
 
-##  Usage
 
-### Training Data Ingestion
-```bash
-# Upload training data (JSON format)
-curl -X POST "http://localhost:8000/api/v1/insert-data" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@training_data.json"
-```
-
-### Email Processing Workflow
-1. **Automatic Detection**: Gmail service monitors for new emails
-2. **AI Processing**: Backend categorizes and generates draft responses  
-3. **Human Review**: Multiple drafts sent to frontend for review
-4. **Draft Creation**: Selected response becomes Gmail draft
-5. **Learning**: Approved responses added to training data
-
-### Dashboard Features
-- **Real-time Monitoring**: Live email processing status
-- **Performance Analytics**: Response times, review rates, category trends
-- **Draft Review Interface**: Side-by-side email/response comparison
-- **Edit Capabilities**: Modify drafts before approval
-
-##  Monitoring & Analytics
-
-### Key Metrics
-- Total emails processed
-- Average response time
-- Human review rate
-- Category distribution
-- New category creation
-- Performance trends
-
-### Logging
-- Request logs stored in MongoDB
-- Performance metrics tracked per request
-- Error logging with detailed context
-- LLM usage and cost tracking
-
-##  Development
-
-### Adding New Features
-1. **Backend**: Add routes → controllers → use cases → services
-2. **Frontend**: Create components → update routing → integrate APIs
-3. **Gmail**: Extend email processing logic in services layer
-
-##  Security
-
-### Best Practices Implemented
-- OAuth2 for Gmail authentication
-- Environment-based API key management
-- Input validation and sanitization
-- Secure WebSocket connections
-- Privacy-conscious logging
-
-### Data Protection
-- Email content processed without persistent storage
-- Attachment validation and type checking
-- Secure inter-service communication
-- GDPR compliance considerations
-
-##  Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-##  License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-##  Support
-
-For support and questions:
-- Create an issue in the repository
-- Check troubleshooting section above
+---
