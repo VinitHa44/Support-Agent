@@ -101,6 +101,7 @@ Provide your response wrapped in the following tags:
 ## NOTE:
 - Must follow the exact format and structure as mentioned above without any additional text or comments.
 - Please provide the response in a pure textual format without markdown formatting.
+- Don't include * for any text in the response.
 - Draft must be generated in the English language irrespective of the language of the customer's email.
 - **CRITICAL**: Ensure the complete draft response is provided - do not cut off mid-sentence or provide partial responses.
 - For any query which is not related to rocket.new, you must politely create a short response and redirect the user to the appropriate support channel.
