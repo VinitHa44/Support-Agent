@@ -30,18 +30,19 @@ background_tasks = set()
 
 def is_image_only_email(email: Dict) -> bool:
     """
-    Check if an email only contains images without any text content.
+    Check if an email should be skipped based on content.
     
     Logic:
     - Only text -> process (return False)
     - Only image -> skip (return True)  
     - Both text and image -> process (return False)
+    - Neither text nor image -> skip (return True)
     
     Args:
         email: Email dictionary containing body and attachments
         
     Returns:
-        bool: True if email should be skipped (only images), False if should be processed
+        bool: True if email should be skipped, False if should be processed
     """
     # Check if email body has meaningful text content
     body = email.get("body", "").strip()
@@ -51,15 +52,21 @@ def is_image_only_email(email: Dict) -> bool:
     attachments = email.get("attachments", [])
     has_images = any(att.get("is_image", False) for att in attachments)
     
-    # Skip only if: no text content AND has images (image-only emails)
-    should_skip = not has_text and has_images
+    # Skip if no text content (regardless of whether it has images or not)
+    should_skip = not has_text
     
     if should_skip:
-        image_count = len([att for att in attachments if att.get("is_image", False)])
-        logger.info(
-            f"Email {email.get('id', 'unknown')} from {email.get('sender', 'unknown')} "
-            f"contains only images ({image_count} images, no text). Skipping processing."
-        )
+        if has_images:
+            image_count = len([att for att in attachments if att.get("is_image", False)])
+            logger.info(
+                f"Email {email.get('id', 'unknown')} from {email.get('sender', 'unknown')} "
+                f"contains only images ({image_count} images, no text). Skipping processing."
+            )
+        else:
+            logger.info(
+                f"Email {email.get('id', 'unknown')} from {email.get('sender', 'unknown')} "
+                f"has no text content or images. Skipping processing."
+            )
     
     return should_skip
 
