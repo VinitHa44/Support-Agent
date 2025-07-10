@@ -104,12 +104,13 @@ class DraftGenerationOrchestrationUsecase:
 
         final_draft_body = ""
         user_reviewed = False
+        is_skip = False
 
         if len(generated_drafts.get("drafts", [])) > 1:
             logging.debug(
                 f"Multiple drafts generated ({len(generated_drafts.get('drafts', []))}), sending to frontend for review..."
             )
-            final_response = await self._handle_review_process(
+            final_response, is_skip = await self._handle_review_process(
                 user_id, generated_drafts
             )
             final_draft_body = final_response.get("drafts", [""])[0]
@@ -118,6 +119,7 @@ class DraftGenerationOrchestrationUsecase:
             logging.debug("Single draft generated, returning directly without review")
             final_response = generated_drafts
             final_draft_body = final_response.get("drafts", [""])[0]
+            is_skip = False  # Single draft is never considered skipped
 
         try:
             await self.template_storage_usecase.store_response_template(
@@ -139,9 +141,9 @@ class DraftGenerationOrchestrationUsecase:
             user_reviewed=user_reviewed,
         )
 
-        return {"body": final_draft_body}
+        return {"is_skip": is_skip, "body": final_draft_body}
 
-    async def _handle_review_process(self, user_id: str, draft_data: Dict) -> Dict:
+    async def _handle_review_process(self, user_id: str, draft_data: Dict) -> tuple[Dict, bool]:
         try:
             await self.websocket_manager.wait_for_connection(user_id)
             logging.debug(f"Sending drafts to frontend for user {user_id}...")
@@ -155,20 +157,28 @@ class DraftGenerationOrchestrationUsecase:
 
             if status == "success" and response:
                 logging.debug("Route execution RESUMED - user review completed")
-                final_draft = response.get("body", "")
-                return {**draft_data, "drafts": [final_draft]}
+                
+                # Handle the new response format with is_skip field
+                is_skip = response.get("is_skip", False)
+                if is_skip:
+                    logging.debug("User cancelled draft review - using first draft as fallback")
+                    first_draft = draft_data.get("drafts", [""])[0]
+                    return {**draft_data, "drafts": [first_draft]}, True
+                else:
+                    final_draft = response.get("body", "")
+                    return {**draft_data, "drafts": [final_draft]}, False
             else:
                 logging.warning(
                     f"WebSocket error: {status} - falling back to first draft"
                 )
                 first_draft = draft_data.get("drafts", [""])[0]
-                return {**draft_data, "drafts": [first_draft]}
+                return {**draft_data, "drafts": [first_draft]}, False
 
         except WebSocketTimeoutError as e:
             logging.error(f"WebSocket error: {e} - falling back to first draft")
             first_draft = draft_data.get("drafts", [""])[0]
-            return {**draft_data, "drafts": [first_draft]}
+            return {**draft_data, "drafts": [first_draft]}, False
         except Exception as e:
             logging.error(f"An unexpected error occurred during draft review: {e}")
             first_draft = draft_data.get("drafts", [""])[0]
-            return {**draft_data, "drafts": [first_draft]} 
+            return {**draft_data, "drafts": [first_draft]}, False 

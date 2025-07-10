@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit2, Send, Mail, User, FileText, CheckCircle, RotateCcw } from 'lucide-react';
+import { Edit2, Send, Mail, User, FileText, CheckCircle, RotateCcw, X } from 'lucide-react';
 
 interface DraftData {
   from: string;
@@ -10,7 +10,7 @@ interface DraftData {
 
 interface DraftReviewPanelProps {
   draftData: DraftData;
-  onSend: (draft: string) => void;
+  onSend: (response: { is_skip: boolean; body: string }) => void;
   queueCount: number;
 }
 
@@ -27,8 +27,12 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
 
   const handleSendDraft = () => {
     if (editedDraft.trim()) {
-      onSend(editedDraft);
+      onSend({ is_skip: false, body: editedDraft });
     }
+  };
+
+  const handleCancelDraft = () => {
+    onSend({ is_skip: true, body: "" });
   };
 
   const InfoCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
@@ -145,16 +149,26 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
 
         {/* Actions */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-          <button
-            onClick={() => {
-              setEditedDraft(draftData.drafts[selectedDraftIndex]);
-              setIsEditing(false);
-            }}
-            className="flex items-center px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
-          >
-            <RotateCcw size={14} className="mr-2" />
-            Reset
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => {
+                setEditedDraft(draftData.drafts[selectedDraftIndex]);
+                setIsEditing(false);
+              }}
+              className="flex items-center px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+            >
+              <RotateCcw size={14} className="mr-2" />
+              Reset
+            </button>
+            
+            <button
+              onClick={handleCancelDraft}
+              className="flex items-center px-4 py-2 text-sm font-semibold text-gray-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors duration-200 border border-red-200"
+            >
+              <X size={14} className="mr-2" />
+              Cancel
+            </button>
+          </div>
           
           <button
             onClick={handleSendDraft}

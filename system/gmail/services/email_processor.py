@@ -39,6 +39,8 @@ class EmailProcessor(EmailProcessorInterface):
             # Call external service to generate reply
             response = await self._call_external_service(email_data)
 
+            logger.info(f"[PROCESSOR] Response: {response}")
+
             if response:
                 # Check if the response should be skipped
                 is_skip = response.get("is_skip", False)

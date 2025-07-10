@@ -233,7 +233,7 @@ const DraftReviewPage: React.FC = () => {
     }
   };
 
-  const sendDraftResponse = (finalDraft: string) => {
+  const sendDraftResponse = (response: { is_skip: boolean; body: string }) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       if (draftQueue.length === 0) {
         toast.warn("No active draft to send a response for.");
@@ -243,7 +243,8 @@ const DraftReviewPage: React.FC = () => {
         wsRef.current.send(JSON.stringify({
           type: 'draft_response',
           data: {
-            body: finalDraft
+            is_skip: response.is_skip,
+            body: response.body
           }
         }));
         // Remove the current draft and reset index if needed
@@ -257,7 +258,11 @@ const DraftReviewPage: React.FC = () => {
           }
           return newQueue;
         });
-        toast.success('Draft response sent successfully!');
+        
+        const message = response.is_skip 
+          ? 'Draft cancelled successfully!' 
+          : 'Draft response sent successfully!';
+        toast.success(message);
       } catch (error) {
         toast.error('Failed to send response. Please check connection.');
         console.error('Send error:', error);
