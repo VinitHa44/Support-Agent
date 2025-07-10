@@ -53,7 +53,10 @@ class GenerateDraftsUsecase:
                 body=body,
                 rocket_doc_results=rocket_docs_response,
                 dataset_search_results=dataset_response,
+                categories=categories
             )
+            with open("intermediate_outputs/8_generate_drafts_user_prompt.txt", "w") as f:
+                f.write(user_prompt)
 
             # Handle image attachments if present
             images = None
@@ -102,14 +105,12 @@ class GenerateDraftsUsecase:
                 )
                 response_1 = parse_response(response_1)
                 response_2 = parse_response(response_2)
-                print(response_1)
                 # Combine drafts from both responses
                 drafts_1 = response_1.get("body", "")
-                print(drafts_1)
                 drafts_2 = response_2.get("body", "")
                 drafts = [drafts_1, drafts_2]
             
-            with open("intermediate_outputs/7_generate_drafts_llm_response.json", "w") as f:
+            with open("intermediate_outputs/9_generate_drafts_llm_response.json", "w") as f:
                 json.dump(drafts, f)
 
             final_response = {

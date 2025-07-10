@@ -14,8 +14,11 @@ class GenerateDraftsHelper:
     ) -> List[Dict]:
         formatted_rocket_docs_response = []
         if rocket_docs_response:
+            element = {}
             for result in rocket_docs_response:
-                formatted_rocket_docs_response.append(result.get("query", ""))
+                element["url"] = result.get("metadata", {}).get("url", "")
+                element["content"] = result.get("query", "")
+                formatted_rocket_docs_response.append(element)
         return formatted_rocket_docs_response
 
     async def format_dataset_response(
@@ -60,11 +63,12 @@ class GenerateDraftsHelper:
         body: str,
         rocket_doc_results: List[Dict],
         dataset_search_results: List[Dict],
+        categories: List[str],
     ) -> str:
         # Format rocket docs results
         rocket_docs_formatted = f"ROCKET DOCS:\n"
         for result in rocket_doc_results:
-            rocket_docs_formatted += f"{result}\n"
+            rocket_docs_formatted += f"{json.dumps(result)}\n"
 
         # Format dataset search results
         dataset_formatted = f"DATASET:\n"
@@ -76,10 +80,26 @@ class GenerateDraftsHelper:
         with open("intermediate_outputs/6_dataset_response.txt", "w") as f:
             f.write(dataset_formatted)
 
+        with open("session-data/categories.json", "r") as f:
+            categories_data = json.load(f)
+        categories_data = categories_data.get("categories", {})
+
+        formatted_categories = f"CATEGORIES:\n"
+        filtered_categories_data = {}
+        for category in categories:
+            if category in categories_data:
+                filtered_categories_data[category] = categories_data[category]
+
+        formatted_categories += f"{json.dumps(filtered_categories_data)}\n"
+            
+        with open("intermediate_outputs/7_categories.txt", "w") as f:
+            f.write(formatted_categories)
+
         user_prompt = GENERATE_DRAFTS_USER_PROMPT.format(
             docs_content=rocket_docs_formatted,
             email_content=f"From: {sender}\nSubject: {subject}\nBody: {body}",
             reference_templates=dataset_formatted,
+            categories=formatted_categories
         )
 
         return user_prompt

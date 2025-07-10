@@ -144,10 +144,16 @@ You will receive the following information at your disposal to craft your respon
 {email_content}
 ```
 
+### Categories
+```
+{categories}
+```
+
 ### Reference Templates
 Use these previous responses as examples for tone, style, and structure:
 ```
 {reference_templates}
+
 ```
 
 ### Current Email Category Details
