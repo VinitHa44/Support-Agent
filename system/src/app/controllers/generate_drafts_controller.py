@@ -197,6 +197,8 @@ class GenerateDraftsController:
                         final_response.get("body", ""),
                         processing_time,
                         user_id,
+                        rocket_docs_response,
+                        dataset_response,
                         multiple_drafts_generated=True,
                         user_reviewed=True
                     )
@@ -261,6 +263,8 @@ class GenerateDraftsController:
                         fallback_draft,
                         processing_time,
                         user_id,
+                        rocket_docs_response,
+                        dataset_response,
                         multiple_drafts_generated=True,
                         user_reviewed=False
                     )
@@ -281,6 +285,8 @@ class GenerateDraftsController:
                     single_draft,
                     processing_time,
                     user_id,
+                    rocket_docs_response,
+                    dataset_response,
                     multiple_drafts_generated=False,
                     user_reviewed=False
                 )
@@ -300,6 +306,8 @@ class GenerateDraftsController:
         final_draft: str,
         processing_time: float,
         user_id: str,
+        rocket_docs_response: list,
+        dataset_response: list,
         multiple_drafts_generated: bool = False,
         user_reviewed: bool = False,
     ):
@@ -311,6 +319,8 @@ class GenerateDraftsController:
         :param final_draft: Final draft response
         :param processing_time: Time taken to process request
         :param user_id: User identifier
+        :param rocket_docs_response: Pinecone search results from rocket docs
+        :param dataset_response: Pinecone search results from dataset
         :param multiple_drafts_generated: Whether multiple drafts were generated
         :param user_reviewed: Whether user reviewed the drafts
         """
@@ -324,6 +334,31 @@ class GenerateDraftsController:
             has_attachments = bool(query.get("attachments", []))
             has_new_categories = bool(new_categories)
             required_docs = bool(categorization_response.get("doc_search_query", "").strip())
+            
+            # Process Pinecone results for logging
+            rocket_docs_count = len(rocket_docs_response) if rocket_docs_response else 0
+            dataset_count = len(dataset_response) if dataset_response else 0
+            
+            # Extract relevant metadata from Pinecone results
+            rocket_docs_metadata = []
+            if rocket_docs_response:
+                for doc in rocket_docs_response[:5]:  # Store top 5 results metadata
+                    if isinstance(doc, dict):
+                        rocket_docs_metadata.append({
+                            "score": doc.get("score", 0),
+                            "id": doc.get("id", ""),
+                            "metadata": doc.get("metadata", {})
+                        })
+            
+            dataset_metadata = []
+            if dataset_response:
+                for doc in dataset_response[:5]:  # Store top 5 results metadata
+                    if isinstance(doc, dict):
+                        dataset_metadata.append({
+                            "score": doc.get("score", 0),
+                            "id": doc.get("id", ""),
+                            "metadata": doc.get("metadata", {})
+                        })
             
             # Create request log data
             request_log_data = {
@@ -343,11 +378,21 @@ class GenerateDraftsController:
                 "doc_search_query": categorization_response.get("doc_search_query"),
                 "multiple_drafts_generated": multiple_drafts_generated,
                 "user_reviewed": user_reviewed,
+                
+                # New Pinecone results fields
+                "rocket_docs_count": rocket_docs_count,
+                "dataset_docs_count": dataset_count,
+                "rocket_docs_results": rocket_docs_metadata,
+                "dataset_results": dataset_metadata,
+                "total_docs_retrieved": rocket_docs_count + dataset_count,
             }
             
             # Save to database
             await self.request_log_repository.add_request_log(request_log_data)
             print(f"Request logged successfully: {request_log_data['request_id']}")
+            print(f"  - Rocket docs retrieved: {rocket_docs_count}")
+            print(f"  - Dataset docs retrieved: {dataset_count}")
+            print(f"  - Total docs retrieved: {rocket_docs_count + dataset_count}")
             
         except Exception as e:
             # Log error but don't fail the main process

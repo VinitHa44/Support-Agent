@@ -109,11 +109,6 @@ const Dashboard: React.FC = () => {
     { name: 'Without Attachments', value: stats.total_requests - stats.requests_with_attachments, color: '#E5E7EB' },
   ];
 
-  const docsData = [
-    { name: 'Requires Docs', value: stats.requests_requiring_docs, color: '#10B981' },
-    { name: 'No Docs Needed', value: stats.total_requests - stats.requests_requiring_docs, color: '#F3F4F6' },
-  ];
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -200,10 +195,53 @@ const Dashboard: React.FC = () => {
 
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <div className="flex items-center">
+              <BookOpen className="h-8 w-8 text-indigo-600" />
+              <div className="ml-3">
+                <p className="text-2xl font-bold text-gray-900">{stats.average_docs_retrieved}</p>
+                <p className="text-gray-600">Avg Docs Retrieved</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="flex items-center">
               <Tag className="h-8 w-8 text-orange-600" />
               <div className="ml-3">
                 <p className="text-2xl font-bold text-gray-900">{stats.new_categories_created_count}</p>
                 <p className="text-gray-600">New Categories</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <Paperclip className="h-8 w-8 text-cyan-600" />
+              <div className="ml-3">
+                <p className="text-2xl font-bold text-gray-900">{stats.requests_with_attachments}</p>
+                <p className="text-gray-600">With Attachments</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <BookOpen className="h-8 w-8 text-teal-600" />
+              <div className="ml-3">
+                <p className="text-2xl font-bold text-gray-900">{stats.requests_requiring_docs}</p>
+                <p className="text-gray-600">Requiring Docs</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-emerald-600" />
+              <div className="ml-3">
+                <p className="text-2xl font-bold text-gray-900">{stats.docs_utilization_rate}%</p>
+                <p className="text-gray-600">Docs Utilization</p>
               </div>
             </div>
           </div>
@@ -279,27 +317,17 @@ const Dashboard: React.FC = () => {
             </ResponsiveContainer>
           </div>
 
-          {/* Documentation Requirements */}
+          {/* Documentation Retrieval */}
           <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentation Requirements</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentation Retrieval</h3>
             <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={docsData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {docsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
+              <BarChart data={stats.most_retrieved_doc_types}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="type" />
+                <YAxis />
                 <Tooltip />
-              </PieChart>
+                <Bar dataKey="count" fill="#6366F1" />
+              </BarChart>
             </ResponsiveContainer>
           </div>
 
@@ -328,6 +356,13 @@ const Dashboard: React.FC = () => {
                 </div>
                 <span className="font-semibold">{stats.user_review_rate}%</span>
               </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <BookOpen className="h-4 w-4 text-indigo-600 mr-2" />
+                  <span className="text-sm text-gray-600">Avg Docs Retrieved</span>
+                </div>
+                <span className="font-semibold">{stats.average_docs_retrieved}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -352,6 +387,9 @@ const Dashboard: React.FC = () => {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Processing Time
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Docs Retrieved
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -384,6 +422,19 @@ const Dashboard: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {log.processing_time.toFixed(2)}s
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          {log.total_docs_retrieved || 0}
+                        </span>
+                        {log.rocket_docs_count > 0 && (
+                          <span className="text-xs text-blue-600">R:{log.rocket_docs_count}</span>
+                        )}
+                        {log.dataset_docs_count > 0 && (
+                          <span className="text-xs text-green-600">D:{log.dataset_docs_count}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">

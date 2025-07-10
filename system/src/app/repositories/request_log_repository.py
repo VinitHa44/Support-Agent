@@ -110,7 +110,15 @@ class RequestLogRepository:
                         "user_reviewed_requests": {
                             "$sum": {"$cond": [{"$eq": ["$user_reviewed", True]}, 1, 0]}
                         },
-                        "all_categories": {"$push": "$categories"}
+                        "all_categories": {"$push": "$categories"},
+                        
+                        # Pinecone analytics
+                        "total_docs_retrieved": {"$sum": "$total_docs_retrieved"},
+                        "rocket_docs_total": {"$sum": "$rocket_docs_count"},
+                        "dataset_docs_total": {"$sum": "$dataset_docs_count"},
+                        "requests_with_docs": {
+                            "$sum": {"$cond": [{"$gt": ["$total_docs_retrieved", 0]}, 1, 0]}
+                        }
                     }
                 }
             ]
@@ -150,6 +158,16 @@ class RequestLogRepository:
                 for cat, count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:10]
             ]
             
+            # Calculate Pinecone-related statistics
+            average_docs_retrieved = (stats["total_docs_retrieved"] / total_requests) if total_requests > 0 else 0.0
+            docs_utilization_rate = (stats["requests_with_docs"] / total_requests * 100) if total_requests > 0 else 0.0
+            
+            # Most retrieved doc types
+            most_retrieved_doc_types = [
+                {"type": "rocket_docs", "count": stats["rocket_docs_total"]},
+                {"type": "dataset_docs", "count": stats["dataset_docs_total"]}
+            ]
+            
             return {
                 "total_requests": total_requests,
                 "average_processing_time": round(stats["average_processing_time"] or 0.0, 2),
@@ -157,7 +175,12 @@ class RequestLogRepository:
                 "requests_requiring_docs": stats["requests_requiring_docs"],
                 "new_categories_created_count": stats["requests_with_new_categories"],
                 "user_review_rate": round(user_review_rate, 2),
-                "most_common_categories": most_common_categories
+                "most_common_categories": most_common_categories,
+                
+                # Enhanced Pinecone statistics
+                "average_docs_retrieved": round(average_docs_retrieved, 2),
+                "most_retrieved_doc_types": most_retrieved_doc_types,
+                "docs_utilization_rate": round(docs_utilization_rate, 2)
             }
             
         except Exception as e:

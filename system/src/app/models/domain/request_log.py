@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel, Field
 
 
@@ -25,6 +25,13 @@ class RequestLog(BaseModel):
     doc_search_query: Optional[str] = Field(None, description="Query used for document search")
     multiple_drafts_generated: bool = Field(default=False, description="Whether multiple drafts were generated")
     user_reviewed: bool = Field(default=False, description="Whether user reviewed multiple drafts")
+    
+    # Pinecone results metadata
+    rocket_docs_count: int = Field(default=0, description="Number of rocket docs retrieved from Pinecone")
+    dataset_docs_count: int = Field(default=0, description="Number of dataset docs retrieved from Pinecone")
+    rocket_docs_results: List[Dict] = Field(default=[], description="Top rocket docs results with metadata")
+    dataset_results: List[Dict] = Field(default=[], description="Top dataset results with metadata")
+    total_docs_retrieved: int = Field(default=0, description="Total number of documents retrieved from Pinecone")
     
     class Config:
         json_encoders = {

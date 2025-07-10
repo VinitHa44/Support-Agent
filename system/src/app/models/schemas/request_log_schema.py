@@ -22,6 +22,13 @@ class RequestLogCreateSchema(BaseModel):
     doc_search_query: Optional[str] = None
     multiple_drafts_generated: bool = False
     user_reviewed: bool = False
+    
+    # Pinecone results fields
+    rocket_docs_count: int = 0
+    dataset_docs_count: int = 0
+    rocket_docs_results: List[dict] = []
+    dataset_results: List[dict] = []
+    total_docs_retrieved: int = 0
 
 
 class RequestLogResponseSchema(BaseModel):
@@ -45,6 +52,13 @@ class RequestLogResponseSchema(BaseModel):
     doc_search_query: Optional[str]
     multiple_drafts_generated: bool
     user_reviewed: bool
+    
+    # Pinecone results fields
+    rocket_docs_count: int
+    dataset_docs_count: int
+    rocket_docs_results: List[dict]
+    dataset_results: List[dict]
+    total_docs_retrieved: int
 
 
 class RequestLogStatsSchema(BaseModel):
@@ -56,4 +70,9 @@ class RequestLogStatsSchema(BaseModel):
     requests_with_attachments: int
     requests_requiring_docs: int
     new_categories_created_count: int
-    user_review_rate: float 
+    user_review_rate: float
+    
+    # Enhanced statistics with Pinecone data
+    average_docs_retrieved: float
+    most_retrieved_doc_types: List[dict]
+    docs_utilization_rate: float 

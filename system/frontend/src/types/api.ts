@@ -6,6 +6,11 @@ export interface RequestLogStats {
   requests_requiring_docs: number;
   new_categories_created_count: number;
   user_review_rate: number;
+  
+  // Enhanced Pinecone statistics
+  average_docs_retrieved: number;
+  most_retrieved_doc_types: Array<{ type: string; count: number }>;
+  docs_utilization_rate: number;
 }
 
 export interface RequestLog {
@@ -27,6 +32,13 @@ export interface RequestLog {
   doc_search_query?: string;
   multiple_drafts_generated: boolean;
   user_reviewed: boolean;
+  
+  // Pinecone results fields
+  rocket_docs_count: number;
+  dataset_docs_count: number;
+  rocket_docs_results: Array<{ score: number; id: string; metadata: any }>;
+  dataset_results: Array<{ score: number; id: string; metadata: any }>;
+  total_docs_retrieved: number;
 }
 
 export interface DraftData {
