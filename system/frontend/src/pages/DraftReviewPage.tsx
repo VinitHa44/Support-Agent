@@ -7,7 +7,8 @@ import { Bell, Mail, RefreshCw } from 'lucide-react';
 
 const DraftReviewPage: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
-  const [draftData, setDraftData] = useState<DraftData | null>(null);
+  const [draftQueue, setDraftQueue] = useState<DraftData[]>([]);
+  const [currentDraftIndex, setCurrentDraftIndex] = useState(0);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -215,7 +216,7 @@ const DraftReviewPage: React.FC = () => {
   const handleWebSocketMessage = (message: any) => {
     switch (message.type) {
       case 'draft_review':
-        setDraftData(message.data);
+        setDraftQueue(prevQueue => [...prevQueue, message.data]);
         
         // Send Chrome notification
         sendChromeNotification(
@@ -256,6 +257,10 @@ const DraftReviewPage: React.FC = () => {
 
   const sendDraftResponse = (finalDraft: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      if (draftQueue.length === 0) {
+        toast.warn("No active draft to send a response for.");
+        return;
+      }
       try {
         wsRef.current.send(JSON.stringify({
           type: 'draft_response',
@@ -263,7 +268,17 @@ const DraftReviewPage: React.FC = () => {
             body: finalDraft
           }
         }));
-        setDraftData(null);
+        // Remove the current draft and reset index if needed
+        setDraftQueue(prevQueue => {
+          const newQueue = prevQueue.filter((_, index) => index !== currentDraftIndex);
+          // Adjust current index if necessary
+          if (currentDraftIndex >= newQueue.length && newQueue.length > 0) {
+            setCurrentDraftIndex(newQueue.length - 1);
+          } else if (newQueue.length === 0) {
+            setCurrentDraftIndex(0);
+          }
+          return newQueue;
+        });
         toast.success('Draft response sent successfully!');
       } catch (error) {
         toast.error('Failed to send response. Please check connection.');
@@ -279,6 +294,14 @@ const DraftReviewPage: React.FC = () => {
     cleanup();
     connectWebSocket();
   };
+
+  const navigateToDraft = (index: number) => {
+    if (index >= 0 && index < draftQueue.length) {
+      setCurrentDraftIndex(index);
+    }
+  };
+
+  const currentDraft = draftQueue[currentDraftIndex];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -315,11 +338,57 @@ const DraftReviewPage: React.FC = () => {
             </div>
           </div>
 
-          {draftData ? (
-            <DraftReviewPanel 
-              draftData={draftData} 
-              onSend={sendDraftResponse} 
-            />
+          {draftQueue.length > 0 ? (
+            <div className="space-y-6">
+              {/* Draft Navigation */}
+              {draftQueue.length > 1 && (
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm font-semibold text-gray-700">
+                        Draft {currentDraftIndex + 1} of {draftQueue.length}
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => navigateToDraft(currentDraftIndex - 1)}
+                          disabled={currentDraftIndex === 0}
+                          className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                        >
+                          ← Previous
+                        </button>
+                        <button
+                          onClick={() => navigateToDraft(currentDraftIndex + 1)}
+                          disabled={currentDraftIndex === draftQueue.length - 1}
+                          className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {draftQueue.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => navigateToDraft(index)}
+                          className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                            index === currentDraftIndex
+                              ? 'bg-blue-500'
+                              : 'bg-gray-300 hover:bg-gray-400'
+                          }`}
+                          title={`Go to draft ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <DraftReviewPanel
+                draftData={currentDraft}
+                onSend={sendDraftResponse}
+                queueCount={draftQueue.length}
+              />
+            </div>
           ) : (
             <div className="text-center py-20 px-6 bg-white rounded-lg border border-gray-200">
               <div className="bg-gray-100 rounded-full p-5 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
