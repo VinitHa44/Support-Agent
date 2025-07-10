@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 from fastapi import Depends, UploadFile
 
+from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.usecases.data_insert_usecases.data_insert_usecase_helper import (
     DataInsertUsecaseHelper,
 )
@@ -19,9 +20,11 @@ class DataInsertUsecase:
             DataInsertUsecaseHelper
         ),
         query_docs_usecase: QueryDocsUsecase = Depends(QueryDocsUsecase),
+        error_repo: ErrorRepo = Depends(ErrorRepo),
     ):
         self.data_insert_usecase_helper = data_insert_usecase_helper
         self.query_docs_usecase = query_docs_usecase
+        self.error_repo = error_repo
 
     async def _process_file(self, file: UploadFile):
         try:
@@ -36,9 +39,29 @@ class DataInsertUsecase:
                 json.dump(categories, f)
             return examples
 
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "data_insert_usecase.py",
+                    "method": "_process_file",
+                    "operation": "json_decode",
+                    "filename": file.filename if file else "unknown",
+                },
+            )
             return {"error": "Invalid JSON format"}
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "data_insert_usecase.py",
+                    "method": "_process_file",
+                    "operation": "file_processing",
+                    "filename": file.filename if file else "unknown",
+                    "status_code": 500,
+                    "response_text": str(e),
+                },
+            )
             return {"error": f"Error processing file: {str(e)}"}
 
     async def execute(
@@ -81,6 +104,19 @@ class DataInsertUsecase:
                 "status": "success",
             }
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "data_insert_usecase.py",
+                    "method": "execute",
+                    "operation": "data_insert_execution",
+                    "has_file": file is not None,
+                    "has_template": new_template is not None,
+                    "template_size": len(new_template) if new_template else 0,
+                    "status_code": 500,
+                    "response_text": str(e),
+                },
+            )
             return {
                 "error": f"Error processing execute function in data_insert_usecase: {str(e)}"
             }

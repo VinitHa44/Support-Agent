@@ -4,6 +4,7 @@ from typing import Dict, List
 from fastapi import Depends, HTTPException
 
 from system.src.app.config.settings import settings
+from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.services.api_service import ApiService
 from system.src.app.services.embedding_service import EmbeddingService
 from system.src.app.services.pinecone_service import PineconeService
@@ -16,10 +17,12 @@ class DataInsertUsecaseHelper:
         api_service: ApiService = Depends(ApiService),
         embedding_service: EmbeddingService = Depends(EmbeddingService),
         pinecone_service: PineconeService = Depends(PineconeService),
+        error_repo: ErrorRepo = Depends(ErrorRepo),
     ):
         self.api_service = api_service
         self.embedding_service = embedding_service
         self.pinecone_service = pinecone_service
+        self.error_repo = error_repo
 
     def _generate_vector_id(self, query: str, subject: str) -> str:
         """Generate a unique vector ID based on query and category"""
@@ -60,6 +63,19 @@ class DataInsertUsecaseHelper:
                     all_embeddings.append(embedding_data)
 
             except Exception as e:
+                await self.error_repo.log_error(
+                    error=e,
+                    additional_context={
+                        "file": "data_insert_usecase_helper.py",
+                        "method": "generate_embeddings",
+                        "operation": "batch_embedding_generation",
+                        "status_code": 500,
+                        "response_text": str(e),
+                        "batch_index": i // batch_size,
+                        "batch_size": len(batch),
+                        "total_examples": len(examples),
+                    },
+                )
                 loggers["main"].error(
                     f"Error generating embeddings for batch: {str(e)}"
                 )
@@ -157,6 +173,17 @@ class DataInsertUsecaseHelper:
                 )
 
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "data_insert_usecase_helper.py",
+                    "method": "ensure_pinecone_index_exists",
+                    "operation": "pinecone_index_management",
+                    "target_index": settings.PINECONE_INDEX_NAME,
+                    "status_code": 500,
+                    "response_text": str(e),
+                },
+            )
             loggers["main"].error(
                 f"Error ensuring Pinecone index exists: {str(e)}"
             )

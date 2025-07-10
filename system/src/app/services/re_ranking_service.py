@@ -1,12 +1,13 @@
 import httpx
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 
+from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.config.settings import settings
 from system.src.app.utils.logging_utils import loggers
 
 
 class RerankerService:
-    def __init__(self):
+    def __init__(self, error_repo: ErrorRepo = Depends(ErrorRepo)):
         self.voyage_api_key = settings.VOYAGEAI_API_KEY
         self.voyage_base_url = settings.VOYAGEAI_BASE_URL
         self.RERANK_SUFFIX = "rerank"
@@ -16,7 +17,8 @@ class RerankerService:
             write=120.0,  # Time to send data
             pool=60.0,  # Time to wait for a connection from the pool
         )
-
+        self.error_repo = error_repo
+        
     async def voyage_rerank(
         self, model_name: str, query: str, documents: list, top_n: int
     ):
@@ -46,14 +48,49 @@ class RerankerService:
                     f"Reranking model hosted by Voyage tokens usage : {response.json().get('usage', {})}"
                 )
                 return response.json()
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(
-                status_code=e.response.status_code,
-                detail=f"HTTP error: {e.response.status_code} - {e.response.text} - {str(e)}",
+        except httpx.HTTPStatusError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "re_ranking_service.py",
+                    "method": "voyage_rerank",
+                    "url": rerank_url,
+                    "status_code": exc.response.status_code,
+                    "response_text": (
+                        exc.response.text
+                        if hasattr(exc.response, "text")
+                        else None
+                    ),
+                    "operation": "voyage_rerank",
+                },
             )
-        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=f"HTTP error: {exc.response.status_code} - {exc.response.text} - {str(exc)}",
+            )
+        except httpx.RequestError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "re_ranking_service.py",
+                    "method": "voyage_rerank",
+                    "url": rerank_url,
+                    "status_code": 502,
+                    "response_text": str(exc.request.content),
+                    "operation": "voyage_rerank",
+                },
+            )
             raise HTTPException(
                 status_code=502, detail="Failed to connect to API"
             )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except Exception as exc:    
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "re_ranking_service.py",
+                    "method": "voyage_rerank",
+                    "url": rerank_url,
+                    "operation": "voyage_rerank",
+                },
+            )
+            raise HTTPException(status_code=500, detail=str(exc))

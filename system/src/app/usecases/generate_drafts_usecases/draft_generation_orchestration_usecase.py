@@ -7,6 +7,7 @@ from fastapi import Depends
 
 from system.src.app.config.settings import settings
 from system.src.app.exceptions.websocket_exceptions import WebSocketTimeoutError
+from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.services.websocket_service import (
     WebSocketManager,
     websocket_manager,
@@ -47,6 +48,7 @@ class DraftGenerationOrchestrationUsecase:
         websocket_manager: WebSocketManager = Depends(
             lambda: websocket_manager
         ),
+        error_repo: ErrorRepo = Depends(ErrorRepo),
     ):
         self.generate_drafts_usecase = generate_drafts_usecase
         self.query_docs_usecase = query_docs_usecase
@@ -54,6 +56,7 @@ class DraftGenerationOrchestrationUsecase:
         self.request_logging_usecase = request_logging_usecase
         self.template_storage_usecase = template_storage_usecase
         self.websocket_manager = websocket_manager
+        self.error_repo = error_repo
 
     async def execute_draft_generation_workflow(
         self, query: Dict, user_id: str = "default_user"
@@ -141,6 +144,19 @@ class DraftGenerationOrchestrationUsecase:
                     categorization_response, final_draft_body
                 )
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "draft_generation_orchestration_usecase.py",
+                    "method": "execute_draft_generation_workflow",
+                    "operation": "template_storage",
+                    "status_code": 500,
+                    "response_text": str(e),
+                    "user_id": user_id,
+                    "subject": categorization_response.get("subject", ""),
+                    "categories": categorization_response.get("categories", []),
+                },
+            )
             logging.warning(f"Failed to store final response template: {e}")
 
         processing_time = time.time() - start_time
@@ -195,10 +211,32 @@ class DraftGenerationOrchestrationUsecase:
                 return {**draft_data, "drafts": [first_draft]}, False
 
         except WebSocketTimeoutError as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "draft_generation_orchestration_usecase.py",
+                    "method": "_handle_review_process",
+                    "operation": "websocket_timeout",
+                    "user_id": user_id,
+                    "draft_count": len(draft_data.get("drafts", [])),
+                },
+            )
             logging.error(f"WebSocket error: {e} - falling back to first draft")
             first_draft = draft_data.get("drafts", [""])[0]
             return {**draft_data, "drafts": [first_draft]}, False
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "draft_generation_orchestration_usecase.py",
+                    "method": "_handle_review_process",
+                    "operation": "draft_review_process",
+                    "user_id": user_id,
+                    "draft_count": len(draft_data.get("drafts", [])),
+                    "status_code": 500,
+                    "response_text": str(e),
+                },
+            )
             logging.error(
                 f"An unexpected error occurred during draft review: {e}"
             )

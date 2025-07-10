@@ -4,6 +4,7 @@ from typing import Any, Dict
 
 from fastapi import Depends, HTTPException
 
+from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.services.gemini_service import GeminiService
 from system.src.app.usecases.categorisation_usecase.helper import (
     CategorizationHelper,
@@ -16,9 +17,11 @@ class CategorizationUsecase:
         self,
         gemini_service: GeminiService = Depends(),
         helper: CategorizationHelper = Depends(),
+        error_repo: ErrorRepo = Depends(ErrorRepo),
     ) -> None:
         self.gemini_service = gemini_service
         self.helper = helper
+        self.error_repo = error_repo
 
     async def execute(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -84,6 +87,19 @@ class CategorizationUsecase:
                     raise ValueError("Response is not a valid dictionary")
 
             except Exception as e:
+                await self.error_repo.log_error(
+                    error=e,
+                    additional_context={
+                        "file": "categorisation_usecase.py",
+                        "method": "execute",
+                        "operation": "gemini_response_parsing",
+                        "status_code": 500,
+                        "response_text": str(e),
+                        "response_text": response_text[:500] if response_text else "",
+                        "subject": subject,
+                        "has_images": has_images,
+                    },
+                )
                 raise HTTPException(
                     status_code=500,
                     detail=f"Invalid JSON response from Gemini API: {str(e)}. Response: {response_text[:500]}",
@@ -108,6 +124,20 @@ class CategorizationUsecase:
             }
 
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "categorisation_usecase.py",
+                    "method": "execute",
+                    "operation": "email_categorization",
+                    "status_code": 500,
+                    "response_text": str(e),
+                    "email_id": email_data.get("id", ""),
+                    "subject": email_data.get("subject", ""),
+                    "sender": email_data.get("sender", ""),
+                    "has_images": email_data.get("has_images", False),
+                },
+            )
             raise HTTPException(
                 status_code=500,
                 detail=f"Error in categorization usecase: {str(e)}",

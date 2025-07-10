@@ -11,6 +11,7 @@ from system.src.app.models.schemas.generate_drafts_schemas import (
 from system.src.app.prompts.generate_drafts_prompts import (
     GENERATE_DRAFTS_SYSTEM_PROMPT,
 )
+from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.services.gemini_service import GeminiService
 from system.src.app.usecases.generate_drafts_usecases.generate_drafts_usecases_helper import (
     GenerateDraftsHelper,
@@ -23,9 +24,11 @@ class GenerateDraftsUsecase:
         self,
         gemini_service: GeminiService = Depends(GeminiService),
         helper: GenerateDraftsHelper = Depends(GenerateDraftsHelper),
+        error_repo: ErrorRepo = Depends(ErrorRepo),
     ):
         self.gemini_service = gemini_service
         self.helper = helper
+        self.error_repo = error_repo
 
     async def generate_drafts(self, query: Dict) -> Dict:
         try:
@@ -126,6 +129,19 @@ class GenerateDraftsUsecase:
             return final_response
 
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "generate_drafts_usecase.py",
+                    "method": "generate_drafts",
+                    "operation": "generate_drafts",
+                    "status_code": 500,
+                    "response_text": str(e),
+                    "sender": query.get("from", ""),
+                    "subject": query.get("subject", ""),
+                    "categories": query.get("categories", []),
+                },
+            )
             # Return error response in expected format
             return {
                 "from": query.get("from", ""),

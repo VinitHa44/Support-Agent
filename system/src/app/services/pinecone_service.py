@@ -4,15 +4,16 @@ from datetime import datetime
 from typing import Any, Dict
 
 import httpx
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from pinecone import Pinecone
 
 from system.src.app.config.settings import settings
 from system.src.app.utils.logging_utils import loggers
+from system.src.app.repositories.error_repository import ErrorRepo
 
 
 class PineconeService:
-    def __init__(self):
+    def __init__(self, error_repo: ErrorRepo = Depends(ErrorRepo)):
         self.pinecone_api_key = settings.PINECONE_API_KEY
         self.api_version = settings.PINECONE_API_VERSION
         self.index_url = settings.PINECONE_CREATE_INDEX_URL
@@ -28,7 +29,8 @@ class PineconeService:
             write=120.0,  # Time to send data
             pool=60.0,  # Time to wait for a connection from the pool
         )
-
+        self.error_repo = error_repo
+        
     async def list_pinecone_indexes(self):
         url = self.list_index_url
 
@@ -43,15 +45,41 @@ class PineconeService:
                 response.raise_for_status()
                 return response.json()
 
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Error in listing pinecone indexes HTTPStatusError: {e.response.text} - {str(e)}",
+        except httpx.HTTPStatusError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "list_pinecone_indexes",
+                    "url": self.list_index_url, 
+                    "status_code": exc.response.status_code,
+                    "response_text": (
+                        exc.response.text
+                        if hasattr(exc.response, "text")
+                        else None
+                    ),
+                    "operation": "list_pinecone_indexes",
+                },
             )
-        except Exception as e:
+            
+            error_msg = f"Error in listing pinecone indexes HTTPStatusError: {exc.response.text} - {str(exc)}"
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=error_msg,
+            )
+        except Exception as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "list_pinecone_indexes",
+                    "url": self.list_index_url,
+                    "operation": "list_pinecone_indexes",
+                },
+            )            
             raise HTTPException(
                 status_code=500,
-                detail=f"Error in pinecone list indexes: {str(e)}",
+                detail=f"Error in pinecone list indexes: {str(exc)}",
             )
 
     async def create_index(
@@ -107,14 +135,40 @@ class PineconeService:
                     loggers["main"].info("Index Created")
                     return response.json()
 
-            except httpx.HTTPStatusError as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Error creating index HTTPStatusError: {e.response.text} - {str(e)}",
+            except httpx.HTTPStatusError as exc:
+                await self.error_repo.log_error(
+                    error=exc,
+                    additional_context={
+                        "file": "pinecone_service.py",
+                        "method": "create_index",
+                        "url": self.index_url,
+                        "status_code": exc.response.status_code,
+                        "response_text": (
+                            exc.response.text
+                            if hasattr(exc.response, "text")
+                            else None
+                        ),
+                        "operation": "create_index",
+                    },
                 )
-            except Exception as e:
+                
+                error_msg = f"Error creating index HTTPStatusError: {exc.response.text} - {str(exc)}"
                 raise HTTPException(
-                    status_code=500, detail=f"Error creating index: {str(e)}"
+                    status_code=exc.response.status_code,
+                    detail=error_msg,
+                )
+            except Exception as exc:
+                await self.error_repo.log_error(
+                    error=exc,
+                    additional_context={
+                        "file": "pinecone_service.py",
+                        "method": "create_index",
+                        "url": self.index_url,
+                        "operation": "create_index",
+                    },
+                )
+                raise HTTPException(
+                    status_code=500, detail=f"Error creating index: {str(exc)}"
                 )
 
         else:
@@ -168,20 +222,57 @@ class PineconeService:
                 response.raise_for_status()
                 return response.json()
 
-        except httpx.HTTPStatusError as e:
+        except httpx.HTTPStatusError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "upsert_vectors",
+                    "url": url,
+                    "status_code": exc.response.status_code,
+                    "response_text": (
+                        exc.response.text
+                        if hasattr(exc.response, "text")
+                        else None
+                    ),
+                    "operation": "upsert_vectors",
+                },
+            )
+            
+            error_msg = f"Error in upsert vectors http status error : {str(exc)} - {exc.response.text}"     
             raise HTTPException(
-                status_code=400,
-                detail=f"Error in upsert vectors http status error : {str(e)} - {e.response.text}",
+                status_code=exc.response.status_code,
+                detail=error_msg,
             )
 
-        except httpx.HTTPError as e:
+        except httpx.HTTPError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "upsert_vectors",
+                    "url": url,
+                    "status_code": 400,
+                    "response_text": str(exc.request.content),
+                    "operation": "upsert_vectors",
+                },
+            )
             raise HTTPException(
                 status_code=400,
-                detail=f"Error in upsert vectors http error : {str(e)}",
+                detail=f"Error in upsert vectors http error : {str(exc)}"
             )
 
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except Exception as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "upsert_vectors",
+                    "url": url,
+                    "operation": "upsert_vectors",
+                },
+            )
+            raise HTTPException(status_code=500, detail=f"Error in upsert vectors: {str(exc)}")
 
     def hybrid_scale(self, dense, sparse, alpha: float):
 
@@ -247,19 +338,54 @@ class PineconeService:
                 )
                 return response.json()
 
-        except httpx.HTTPStatusError as e:
+        except httpx.HTTPStatusError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "pinecone_hybrid_query",
+                    "url": url,
+                    "status_code": exc.response.status_code,
+                    "response_text": (
+                        exc.response.text
+                        if hasattr(exc.response, "text")
+                        else None
+                    ),
+                    "operation": "pinecone_hybrid_query",
+                },
+            )
             raise HTTPException(
-                status_code=400,
-                detail=f"HTTP status error in hybrid query: {e.response.text} - {str(e)}",
+                status_code=exc.response.status_code,
+                detail=f"HTTP status error in hybrid query: {exc.response.text} - {str(exc)}",
             )
 
-        except httpx.HTTPError as e:
+        except httpx.HTTPError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "pinecone_hybrid_query",
+                    "url": url,
+                    "status_code": 400,
+                    "response_text": str(exc.request.content),
+                    "operation": "pinecone_hybrid_query",
+                },
+            )
             raise HTTPException(
-                status_code=400, detail=f"HTTP error in hybrid query: {str(e)}"
+                status_code=400, detail=f"HTTP error in hybrid query: {str(exc)}"
             )
 
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except Exception as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "pinecone_hybrid_query",
+                    "url": url,
+                    "operation": "pinecone_hybrid_query",
+                },
+            )
+            raise HTTPException(status_code=500, detail=f"Error in hybrid query: {str(exc)}")
 
     async def pinecone_query(
         self,
@@ -301,28 +427,72 @@ class PineconeService:
                 )
                 return response.json()
 
-        except httpx.HTTPStatusError as e:
+        except httpx.HTTPStatusError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "pinecone_query",
+                    "url": url,
+                    "status_code": exc.response.status_code,
+                    "response_text": (
+                        exc.response.text
+                        if hasattr(exc.response, "text")
+                        else None
+                    ),
+                    "operation": "pinecone_query",
+                },
+            )
             raise HTTPException(
                 status_code=400,
-                detail=f"HTTP status error in pinecone query: {e.response.text} - {str(e)}",
+                detail=f"HTTP status error in pinecone query: {exc.response.text} - {str(exc)}",
             )
 
-        except httpx.RequestError as e:
+        except httpx.RequestError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "pinecone_query",
+                    "url": url,
+                    "status_code": 400,
+                    "response_text": str(exc.request.content),
+                    "operation": "pinecone_query",
+                },
+            )
             raise HTTPException(
                 status_code=400,
-                detail=f"Request error in pinecone query: {str(e)}",
+                detail=f"Request error in pinecone query: {str(exc)}",
             )
 
-        except httpx.HTTPError as e:
+        except httpx.HTTPError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "pinecone_query",
+                    "url": url,
+                    "status_code": 400,
+                    "response_text": str(exc.request.content),
+                    "operation": "pinecone_query",
+                },
+            )
             raise HTTPException(
                 status_code=400,
-                detail=f"HTTP error in pinecone query: {str(e)}",
+                detail=f"HTTP error in pinecone query: {str(exc)}",
             )
 
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Error in pinecone query : {str(e)}"
+        except Exception as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "pinecone_query",
+                    "url": url,
+                    "operation": "pinecone_query",
+                },
             )
+            raise HTTPException(status_code=500, detail=f"Error in pinecone query : {str(exc)}")
 
     async def get_index_details(self, index_name: str):
         url = f"https://api.pinecone.io/indexes/{index_name}"
@@ -339,15 +509,41 @@ class PineconeService:
                 index_details = response.json()
                 return index_details
 
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(
-                status_code=e.response.status_code,
-                detail=f"Error getting index details: {e.response.text}",
+        except httpx.HTTPStatusError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "get_index_details",
+                    "url": url,
+                    "status_code": exc.response.status_code,
+                    "response_text": (
+                        exc.response.text
+                        if hasattr(exc.response, "text")
+                        else None
+                    ),
+                    "operation": "get_index_details",
+                },
             )
-        except Exception as e:
+            error_msg = f"Error getting index details: {exc.response.text}"
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=error_msg,
+            )
+        except Exception as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "get_index_details",
+                    "url": url,
+                    "operation": "get_index_details",
+                },
+            )
+            error_msg = f"Error getting index details: {str(exc)}"
             raise HTTPException(
                 status_code=500,
-                detail=f"Error retrieving index details: {str(e)}",
+                detail=error_msg,
             )
 
     async def get_index_host(self, index_name: str) -> str:
@@ -362,10 +558,20 @@ class PineconeService:
             return index_details["host"]
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "get_index_host",
+                    "url": f"https://api.pinecone.io/indexes/{index_name}",
+                    "operation": "get_index_host",
+                },
+            )
+            error_msg = f"Error getting index host: {str(exc)}"
             raise HTTPException(
                 status_code=500,
-                detail=f"Error extracting host from index details: {str(e)}",
+                detail=error_msg,
             )
 
     async def delete_vectors(
@@ -399,20 +605,43 @@ class PineconeService:
 
                 return {"deleted": len(vector_ids)}
 
-        except httpx.HTTPStatusError as e:
+        except httpx.HTTPStatusError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "delete_vectors",
+                    "url": delete_url,
+                    "status_code": exc.response.status_code,
+                    "response_text": (
+                        exc.response.text
+                        if hasattr(exc.response, "text")
+                        else None
+                    ),
+                    "operation": "delete_vectors",
+                },
+            )
+            error_msg = f"Error deleting vectors http status error: {exc.response.text} - {str(exc)}"
             raise HTTPException(
-                status_code=400,
-                detail=f"Error deleting vectors http status error: {str(e)} - {e.response.text}",
+                status_code=exc.response.status_code,
+                detail=error_msg,
             )
 
-        except httpx.HTTPError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Error deleting vectors http error: {str(e)}",
+        except Exception as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "pinecone_service.py",
+                    "method": "delete_vectors",
+                    "url": delete_url,
+                    "operation": "delete_vectors",
+                },
             )
-
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            error_msg = f"Error deleting vectors: {str(exc)}"
+            raise HTTPException(
+                status_code=500,
+                detail=error_msg,
+            )
 
     async def upsert_vectors_simplified(
         self, vectors: list, namespace: str = "default"

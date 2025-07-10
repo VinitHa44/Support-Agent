@@ -2,6 +2,7 @@ from typing import Dict
 
 from fastapi import Depends
 
+from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.usecases.data_insert_usecases.data_insert_usecase import (
     DataInsertUsecase,
 )
@@ -11,8 +12,10 @@ class TemplateStorageUsecase:
     def __init__(
         self,
         data_insert_usecase: DataInsertUsecase = Depends(DataInsertUsecase),
+        error_repo: ErrorRepo = Depends(ErrorRepo),
     ):
         self.data_insert_usecase = data_insert_usecase
+        self.error_repo = error_repo
 
     async def store_response_template(
         self, categorization_response: Dict, final_draft: str
@@ -49,6 +52,20 @@ class TemplateStorageUsecase:
             return result
 
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "template_storage_usecase.py",
+                    "method": "store_response_template",
+                    "operation": "template_storage",
+                    "status_code": 500,
+                    "response_text": str(e),
+                    "subject": categorization_response.get("subject", ""),
+                    "categories": categorization_response.get("categories", []),
+                    "new_categories": categorization_response.get("new_categories", []),
+                    "template_size": len(template_data) if 'template_data' in locals() else 0,
+                },
+            )
             # Log the error but don't fail the main process
             print(f"Warning: Failed to store response template: {str(e)}")
             raise e

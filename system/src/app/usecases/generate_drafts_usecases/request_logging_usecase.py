@@ -3,6 +3,7 @@ from typing import Dict
 
 from fastapi import Depends
 
+from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.repositories.request_log_repository import (
     RequestLogRepository,
 )
@@ -14,8 +15,10 @@ class RequestLoggingUsecase:
         request_log_repository: RequestLogRepository = Depends(
             RequestLogRepository
         ),
+        error_repo: ErrorRepo = Depends(ErrorRepo),
     ):
         self.request_log_repository = request_log_repository
+        self.error_repo = error_repo
 
     async def log_request(
         self,
@@ -121,5 +124,19 @@ class RequestLoggingUsecase:
             )
         
         except Exception as e:
+            await self.error_repo.log_error(
+                error=e,
+                additional_context={
+                    "file": "request_logging_usecase.py",
+                    "method": "log_request",
+                    "operation": "request_logging",
+                    "request_id": query.get("id", "unknown"),
+                    "status_code": 500,
+                    "response_text": str(e),
+                    "user_id": user_id,
+                    "subject": categorization_response.get("subject", ""),
+                    "processing_time": processing_time,
+                },
+            )
             # Log error but don't fail the main process
             loggers["main"].error(f"Warning: Failed to log request: {str(e)}")

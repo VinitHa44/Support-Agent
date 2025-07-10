@@ -2,10 +2,11 @@ import logging
 import pickle
 
 import httpx
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 
 from system.src.app.config.settings import settings
 from system.src.app.utils.logging_utils import loggers
+from system.src.app.repositories.error_repository import ErrorRepo
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ with open("bm25_encoder.pkl", "rb") as f:
 
 
 class EmbeddingService:
-    def __init__(self):
+    def __init__(self, error_repo: ErrorRepo = Depends(ErrorRepo)):
         self.pinecone_api_key = settings.PINECONE_API_KEY
         self.dense_embed_url = settings.PINECONE_EMBED_URL
         self.pinecone_embedding_url = settings.PINECONE_EMBED_URL
@@ -25,7 +26,8 @@ class EmbeddingService:
             write=300.0,  # Time to send data
             pool=60.0,  # Time to wait for a connection from the pool
         )
-
+        self.error_repo = error_repo
+        
     async def pinecone_dense_embeddings(
         self,
         inputs: list,
@@ -70,18 +72,39 @@ class EmbeddingService:
                 list_result = [item["values"] for item in response["data"]]
                 return list_result
 
-        except httpx.HTTPStatusError as e:
-            loggers["main"].error(
-                f"Error dense embeddings in pinecone dense embeddings: {e.response.text}"
+        except httpx.HTTPStatusError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "embedding_service.py",
+                    "method": "pinecone_dense_embeddings",
+                    "url": self.dense_embed_url,
+                    "status_code": exc.response.status_code,
+                    "response_text": (
+                        exc.response.text
+                        if hasattr(exc.response, "text")
+                        else None
+                    ),
+                    "operation": "pinecone_dense_embeddings",
+                },
             )
+
+            error_msg = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."  
             raise HTTPException(
-                status_code=400, detail=f"{str(e)}-{e.response.text}"
+                status_code=exc.response.status_code, detail=error_msg
             )
         except Exception as e:
-            loggers["main"].error(
-                f"Error dense embeddings in pinecone dense embeddings: {str(e)}"
+            error_msg = f"Error dense embeddings in pinecone dense embeddings: {str(e)}"
+            await self.error_repo.log_error(
+                error=error_msg,
+                additional_context={
+                    "file": "embedding_service.py",
+                    "method": "pinecone_dense_embeddings",
+                    "url": self.dense_embed_url,
+                    "operation": "pinecone_dense_embeddings",
+                },
             )
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=error_msg)
 
     def pinecone_sparse_embeddings(self, inputs):
         try:
