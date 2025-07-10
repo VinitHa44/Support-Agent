@@ -97,7 +97,7 @@ class DataInsertUsecaseHelper:
                     "subject": example["subject"],
                 },
             }
-            loggers["data_insert"].info(f"Vector data: {vector_data}")
+            loggers["data_insert"].info(f"Vector id: {vector_data['id']}")
             vectors_to_upsert.append(vector_data)
 
         if vectors_to_upsert:

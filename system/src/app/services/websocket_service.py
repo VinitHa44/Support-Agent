@@ -40,34 +40,31 @@ class WebSocketManager:
             del self.response_futures[user_id]
         print(f"WebSocket disconnected for user: {user_id}")
 
-    async def wait_for_connection(self, user_id: str, max_wait_seconds: int = 15) -> bool:
+    async def wait_for_connection(self, user_id: str, timeout: int = 30) -> WebSocket:
         """
-        Wait for a WebSocket connection to be established
-        
-        :param user_id: User identifier to wait for
-        :param max_wait_seconds: Maximum time to wait for connection
-        :return: True if connection established, False if timeout
+        Waits for a WebSocket connection to be established for a specific user.
         """
-        print(f"Waiting for WebSocket connection for user: {user_id} (max {max_wait_seconds}s)")
-        
-        for attempt in range(max_wait_seconds * 4):  # Check every 250ms for better responsiveness
-            if user_id in self.active_connections:
-                # Additional check to ensure connection is actually functional
-                try:
-                    await self.send_message(user_id, {"type": "connection_test"})
-                    # Give a short time for the response (not critical if it fails)
-                    await asyncio.sleep(0.1)
-                    print(f"WebSocket connection verified for user: {user_id} (attempt {attempt + 1})")
-                    return True
-                except Exception:
-                    # Connection exists but not functional, remove it
-                    print(f"Connection test failed for user: {user_id}, removing stale connection")
-                    self.disconnect(user_id)
-                    
-            await asyncio.sleep(0.25)  # Wait 250ms before next check
-            
-        print(f"WebSocket connection timeout for user: {user_id} after {max_wait_seconds}s")
-        return False
+        print(f"Waiting for WebSocket connection for user: {user_id} (max {timeout}s)")
+        try:
+            connection = await asyncio.wait_for(
+                self._get_connection(user_id), timeout=timeout
+            )
+            return connection
+        except asyncio.TimeoutError:
+            print(
+                f"WebSocket connection timeout for user: {user_id} after {timeout}s"
+            )
+            raise Exception(
+                f"No WebSocket connection established for user: {user_id} within {timeout} second timeout. "
+                "Frontend may not be running or connected."
+            )
+
+    async def _get_connection(self, user_id: str) -> WebSocket:
+        while user_id not in self.active_connections:
+            # Check for connection every 100ms
+            await asyncio.sleep(0.1)
+        print(f"WebSocket connection found for user: {user_id}")
+        return self.active_connections[user_id]
 
     async def send_draft_for_review(
         self, user_id: str, draft_data: Dict
@@ -115,16 +112,25 @@ class WebSocketManager:
                 raise Exception(f"Failed to send draft to frontend: {str(send_error)}")
 
             print(
-                f"Drafts sent. API route is now WAITING for user response (max 5 minutes)..."
+                f"Drafts sent. API route is now WAITING for user response (max 1 hour)..."
             )
 
             # Wait for user response (with timeout) - THIS BLOCKS THE API ROUTE
             response = await asyncio.wait_for(
-                future, timeout=300.0
-            )  # 5 minutes timeout
+                future, timeout=3600.0
+            )  # 1 hour timeout
 
             print(f"User response received! API route can now continue...")
-            return response
+            return (response, "success")
+
+        except asyncio.CancelledError:
+            print(f"Draft review cancelled for user {user_id} (client disconnected).")
+            # Cleanup on cancellation
+            if user_id in self.response_futures:
+                del self.response_futures[user_id]
+            if user_id in self.pending_drafts:
+                del self.pending_drafts[user_id]
+            return (None, "cancelled")
 
         except asyncio.TimeoutError:
             # Cleanup on timeout

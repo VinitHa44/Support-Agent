@@ -135,12 +135,16 @@ class DraftGenerationOrchestrationUsecase:
             # Send drafts to frontend for review via WebSocket
             # THIS PAUSES ROUTE EXECUTION until user responds
             try:
-                final_response = (
+                final_response, status = (
                     await websocket_manager.send_draft_for_review(
                         user_id, generate_drafts_response
                     )
                 )
 
+                if status == "cancelled":
+                    print("Draft review was cancelled by user (disconnected). Falling back to first draft.")
+                    raise Exception("User disconnected")
+                
                 print(f"Route execution RESUMED - user review completed")
                 print(
                     f"Final user choice received, returning to calling service"

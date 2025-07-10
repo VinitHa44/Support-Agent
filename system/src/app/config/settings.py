@@ -48,8 +48,7 @@ class Settings(BaseSettings):
         f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?key="
     )
     
-    GMAIL_CLIENT_ID: str
-    GMAIL_CLIENT_SECRET: str
+
 
     # Voyage Settings
     VOYAGEAI_API_KEY: str

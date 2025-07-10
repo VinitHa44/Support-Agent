@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import DraftReviewPanel from '../components/DraftReviewPanel';
 import ConnectionStatus from '../components/ConnectionStatus';
 import { DraftData } from '../types/api';
-import { Bell, Mail, Wifi, WifiOff } from 'lucide-react';
+import { Bell, Mail, RefreshCw } from 'lucide-react';
 
 const DraftReviewPage: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -37,6 +37,10 @@ const DraftReviewPage: React.FC = () => {
     
     // Close websocket
     if (wsRef.current) {
+      wsRef.current.removeEventListener('open', handleOpen);
+      wsRef.current.removeEventListener('message', handleMessage);
+      wsRef.current.removeEventListener('close', handleClose);
+      wsRef.current.removeEventListener('error', handleError);
       wsRef.current.close();
       wsRef.current = null;
     }
@@ -111,9 +115,46 @@ const DraftReviewPage: React.FC = () => {
     }
   };
 
+  const handleOpen = () => {
+    setIsConnected(true);
+    console.log('WebSocket connected');
+    reconnectAttemptsRef.current = 0; // Reset reconnection attempts
+    isConnectingRef.current = false;
+    startHeartbeat();
+  };
+
+  const handleMessage = (event: MessageEvent) => {
+    try {
+      const message = JSON.parse(event.data);
+      handleWebSocketMessage(message);
+    } catch (error) {
+      console.error('Failed to parse WebSocket message:', error);
+      console.error('Raw message:', event.data);
+    }
+  };
+
+  const handleClose = (event: CloseEvent) => {
+    setIsConnected(false);
+    isConnectingRef.current = false;
+    stopHeartbeat();
+    console.log(`WebSocket disconnected: ${event.code} - ${event.reason}`);
+    
+    // Only auto-reconnect if it wasn't a manual close (code 1000)
+    if (event.code !== 1000) {
+      scheduleReconnect();
+    }
+  };
+
+  const handleError = (error: Event) => {
+    console.error('WebSocket error:', error);
+    isConnectingRef.current = false;
+    stopHeartbeat();
+    // Reconnect logic will be triggered by the close event that follows
+  };
+  
   const connectWebSocket = () => {
     // Prevent multiple simultaneous connection attempts
-    if (isConnectingRef.current) {
+    if (isConnectingRef.current || (wsRef.current && wsRef.current.readyState === WebSocket.OPEN)) {
       return;
     }
     
@@ -129,53 +170,24 @@ const DraftReviewPage: React.FC = () => {
     const backendHost = window.location.hostname + ':8000';
     const wsUrl = `${protocol}//${backendHost}/api/v1/ws/drafts?user_id=${userId}`;
     
+    console.log(`Connecting to WebSocket: ${wsUrl}`);
+    
     wsRef.current = new WebSocket(wsUrl);
 
-    wsRef.current.onopen = () => {
-      setIsConnected(true);
-      console.log('WebSocket connected');
-      reconnectAttemptsRef.current = 0; // Reset reconnection attempts on successful connection
-      isConnectingRef.current = false;
-      startHeartbeat(); // Start sending pings to keep connection alive
-    };
-
-    wsRef.current.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        handleWebSocketMessage(message);
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
-        console.error('Raw message:', event.data);
-      }
-    };
-
-    wsRef.current.onclose = (event) => {
-      setIsConnected(false);
-      isConnectingRef.current = false;
-      stopHeartbeat();
-      
-      console.log(`WebSocket disconnected: ${event.code} - ${event.reason}`);
-      
-      // Only auto-reconnect if it wasn't a manual close (code 1000)
-      if (event.code !== 1000) {
-        scheduleReconnect();
-      }
-    };
-
-    wsRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      isConnectingRef.current = false;
-      stopHeartbeat();
-    };
+    wsRef.current.addEventListener('open', handleOpen);
+    wsRef.current.addEventListener('message', handleMessage);
+    wsRef.current.addEventListener('close', handleClose);
+    wsRef.current.addEventListener('error', handleError);
     
     // Set a connection timeout
-    setTimeout(() => {
+    const connectionTimeout = setTimeout(() => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
-        console.log('WebSocket connection timeout');
-        wsRef.current.close();
-        scheduleReconnect();
+        console.log('WebSocket connection attempt timed out.');
+        wsRef.current.close(); // This will trigger the handleClose event, which then triggers reconnect
       }
     }, 10000); // 10 second timeout
+
+    wsRef.current.addEventListener('open', () => clearTimeout(connectionTimeout));
   };
 
   const scheduleReconnect = () => {
@@ -251,24 +263,20 @@ const DraftReviewPage: React.FC = () => {
             body: finalDraft
           }
         }));
-        
-        // Clear draft data after sending
         setDraftData(null);
         toast.success('Draft response sent successfully!');
       } catch (error) {
-        console.error('Failed to send draft response:', error);
-        toast.error('Failed to send response. Please try again.');
+        toast.error('Failed to send response. Please check connection.');
+        console.error('Send error:', error);
       }
     } else {
-      toast.error('WebSocket not connected. Attempting to reconnect...');
-      connectWebSocket(); // Try to reconnect
+      toast.error('WebSocket not connected. Please check your connection.');
     }
   };
 
   const manualReconnect = () => {
-    console.log('Manual reconnection requested');
+    reconnectAttemptsRef.current = 0;
     cleanup();
-    reconnectAttemptsRef.current = 0; // Reset attempts for manual reconnection
     connectWebSocket();
   };
 
@@ -302,7 +310,7 @@ const DraftReviewPage: React.FC = () => {
                     Enable Alerts
                   </button>
                 )}
-                <ConnectionStatus isConnected={isConnected} onReconnect={manualReconnect} />
+                <ConnectionStatus isConnected={isConnected} />
               </div>
             </div>
           </div>
@@ -323,6 +331,17 @@ const DraftReviewPage: React.FC = () => {
               <p className="text-sm text-gray-500 max-w-sm mx-auto">
                 When a new email is processed and requires your review, it will appear here automatically. Ensure your connection is active.
               </p>
+              {!isConnected && (
+                <div className="mt-6">
+                  <button
+                    onClick={manualReconnect}
+                    className="flex items-center mx-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 text-sm font-semibold border border-gray-200"
+                  >
+                    <RefreshCw size={14} className="mr-2" />
+                    Attempt to Reconnect
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
