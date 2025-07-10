@@ -40,10 +40,17 @@ class EmailProcessor(EmailProcessorInterface):
             response = await self._call_external_service(email_data)
 
             if response:
+                # Check if the response should be skipped
+                is_skip = response.get("is_skip", False)
+                
+                if is_skip:
+                    logger.info(f"[PROCESSOR] Skipping draft creation for email {email['id']} due to is_skip=True")
+                    return {"status": "skipped", "message": "Draft creation skipped based on external service response"}
+                
                 # Extract sender email
                 sender_email = self._extract_email_address(email["sender"])
 
-                # Create draft
+                # Create draft using the body field
                 success = self.draft_creator.create_draft(
                     to_email=sender_email,
                     body=response["body"],
