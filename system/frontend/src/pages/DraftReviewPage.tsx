@@ -10,17 +10,65 @@ const DraftReviewPage: React.FC = () => {
   const [draftData, setDraftData] = useState<DraftData | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const wsRef = useRef<WebSocket | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const isConnectingRef = useRef(false);
   const userId = 'default_user';
 
   useEffect(() => {
     connectWebSocket();
     checkNotificationPermission();
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      cleanup();
     };
   }, []);
+
+  const cleanup = () => {
+    // Clear intervals and timeouts
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    // Close websocket
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    
+    isConnectingRef.current = false;
+  };
+
+  const startHeartbeat = () => {
+    // Clear any existing heartbeat
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+    }
+    
+    // Send ping every 30 seconds to keep connection alive
+    pingIntervalRef.current = setInterval(() => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+  };
+
+  const stopHeartbeat = () => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+  };
+
+  const getReconnectDelay = (attempt: number) => {
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+    return Math.min(1000 * Math.pow(2, attempt), 30000);
+  };
 
   const checkNotificationPermission = () => {
     if ('Notification' in window) {
@@ -48,20 +96,7 @@ const DraftReviewPage: React.FC = () => {
         badge: '/favicon.ico',
         tag: 'draft-review',
         requireInteraction: true,
-        silent: false,
-        vibrate: [200, 100, 200],
-        actions: [
-          {
-            action: 'view',
-            title: 'View Draft',
-            icon: '/favicon.ico'
-          },
-          {
-            action: 'dismiss',
-            title: 'Dismiss',
-            icon: '/favicon.ico'
-          }
-        ]
+        silent: false
       });
 
       notification.onclick = () => {
@@ -77,8 +112,20 @@ const DraftReviewPage: React.FC = () => {
   };
 
   const connectWebSocket = () => {
+    // Prevent multiple simultaneous connection attempts
+    if (isConnectingRef.current) {
+      return;
+    }
+    
+    isConnectingRef.current = true;
+    
+    // Clear any pending reconnection
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use backend port 8000 instead of frontend port 3000
     const backendHost = window.location.hostname + ':8000';
     const wsUrl = `${protocol}//${backendHost}/api/v1/ws/drafts?user_id=${userId}`;
     
@@ -87,28 +134,70 @@ const DraftReviewPage: React.FC = () => {
     wsRef.current.onopen = () => {
       setIsConnected(true);
       console.log('WebSocket connected');
+      reconnectAttemptsRef.current = 0; // Reset reconnection attempts on successful connection
+      isConnectingRef.current = false;
+      startHeartbeat(); // Start sending pings to keep connection alive
     };
 
     wsRef.current.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      handleWebSocketMessage(message);
+      try {
+        const message = JSON.parse(event.data);
+        handleWebSocketMessage(message);
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error);
+        console.error('Raw message:', event.data);
+      }
     };
 
-    wsRef.current.onclose = () => {
+    wsRef.current.onclose = (event) => {
       setIsConnected(false);
-      console.log('WebSocket disconnected');
+      isConnectingRef.current = false;
+      stopHeartbeat();
       
-      // Attempt to reconnect after 3 seconds
-      setTimeout(() => {
-        if (wsRef.current?.readyState === WebSocket.CLOSED) {
-          connectWebSocket();
-        }
-      }, 3000);
+      console.log(`WebSocket disconnected: ${event.code} - ${event.reason}`);
+      
+      // Only auto-reconnect if it wasn't a manual close (code 1000)
+      if (event.code !== 1000) {
+        scheduleReconnect();
+      }
     };
 
     wsRef.current.onerror = (error) => {
       console.error('WebSocket error:', error);
+      isConnectingRef.current = false;
+      stopHeartbeat();
     };
+    
+    // Set a connection timeout
+    setTimeout(() => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+        console.log('WebSocket connection timeout');
+        wsRef.current.close();
+        scheduleReconnect();
+      }
+    }, 10000); // 10 second timeout
+  };
+
+  const scheduleReconnect = () => {
+    // Don't reconnect if already connecting or max attempts reached
+    if (isConnectingRef.current || reconnectAttemptsRef.current >= 10) {
+      if (reconnectAttemptsRef.current >= 10) {
+        console.log('Max reconnection attempts reached');
+        toast.error('Connection failed. Please refresh the page.');
+      }
+      return;
+    }
+
+    const delay = getReconnectDelay(reconnectAttemptsRef.current);
+    reconnectAttemptsRef.current++;
+    
+    console.log(`Scheduling reconnection attempt ${reconnectAttemptsRef.current} in ${delay}ms`);
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (!isConnected && !isConnectingRef.current) {
+        connectWebSocket();
+      }
+    }, delay);
   };
 
   const handleWebSocketMessage = (message: any) => {
@@ -139,6 +228,12 @@ const DraftReviewPage: React.FC = () => {
       case 'pong':
         console.log('Received pong');
         break;
+      case 'connection_test':
+        // Respond to connection test from backend
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'connection_test_response' }));
+        }
+        break;
       case 'error':
         console.error('WebSocket error:', message.data?.message || 'Unknown error');
         break;
@@ -149,19 +244,32 @@ const DraftReviewPage: React.FC = () => {
 
   const sendDraftResponse = (finalDraft: string) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'draft_response',
-        data: {
-          body: finalDraft
-        }
-      }));
-      
-      // Clear draft data after sending
-      setDraftData(null);
-      toast.success('Draft response sent successfully!');
+      try {
+        wsRef.current.send(JSON.stringify({
+          type: 'draft_response',
+          data: {
+            body: finalDraft
+          }
+        }));
+        
+        // Clear draft data after sending
+        setDraftData(null);
+        toast.success('Draft response sent successfully!');
+      } catch (error) {
+        console.error('Failed to send draft response:', error);
+        toast.error('Failed to send response. Please try again.');
+      }
     } else {
-      toast.error('WebSocket not connected. Please check your connection.');
+      toast.error('WebSocket not connected. Attempting to reconnect...');
+      connectWebSocket(); // Try to reconnect
     }
+  };
+
+  const manualReconnect = () => {
+    console.log('Manual reconnection requested');
+    cleanup();
+    reconnectAttemptsRef.current = 0; // Reset attempts for manual reconnection
+    connectWebSocket();
   };
 
   return (
@@ -194,7 +302,7 @@ const DraftReviewPage: React.FC = () => {
                     Enable Alerts
                   </button>
                 )}
-                <ConnectionStatus isConnected={isConnected} />
+                <ConnectionStatus isConnected={isConnected} onReconnect={manualReconnect} />
               </div>
             </div>
           </div>

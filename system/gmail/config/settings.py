@@ -4,7 +4,7 @@ from typing import List
 from pydantic import BaseModel
 
 CONFIG_DIR = Path(__file__).parent
-PROJECT_ROOT = CONFIG_DIR.parent.parent
+PROJECT_ROOT = CONFIG_DIR.parent.parent.parent
 
 class Settings(BaseModel):
     GMAIL_SCOPES: List[str] = [

@@ -179,6 +179,7 @@ class DraftGenerationOrchestrationUsecase:
                 print(
                     f"WebSocket error: {str(e)} - falling back to first draft"
                 )
+                print("Common causes: Frontend not connected, network issues, or connection timeout")
                 fallback_draft = (
                     drafts[0] if drafts else "No draft available"
                 )

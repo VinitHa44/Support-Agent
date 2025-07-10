@@ -19,8 +19,22 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str = Query(...)):
     try:
         while True:
             # Wait for messages from the frontend
-            data = await websocket.receive_text()
-            message = json.loads(data)
+            try:
+                data = await websocket.receive_text()
+                message = json.loads(data)
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON received from user {user_id}: {e}")
+                await websocket_manager.send_message(
+                    user_id,
+                    {
+                        "type": "error",
+                        "data": {"message": "Invalid JSON format"}
+                    }
+                )
+                continue
+            except Exception as e:
+                print(f"Error receiving message from user {user_id}: {e}")
+                break
 
             # Handle different message types
             message_type = message.get("type")
@@ -35,6 +49,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str = Query(...)):
             elif message_type == "ping":
                 # Handle ping/pong for keeping connection alive
                 await websocket_manager.send_message(user_id, {"type": "pong"})
+
+            elif message_type == "connection_test_response":
+                # Handle connection test response - no action needed
+                pass
 
             elif message_type == "status":
                 # Handle status updates

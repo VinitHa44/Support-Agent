@@ -1,5 +1,5 @@
 """
-Gmail 24x7 Polling Service
+Gmail 24x7 Polling Service - Refactored with Modular Architecture
 
 Continuously polls Gmail for new emails and creates draft replies.
 Non-blocking approach: polling and email processing are separate.
@@ -9,11 +9,16 @@ import asyncio
 import logging
 import signal
 import sys
-from typing import Dict
+from typing import Set
 
-import httpx
-from system.gmail.config import settings
-from system.gmail.gmail_operations_manager import EmailService
+from system.gmail.auth.oauth_manager import GmailAuth
+from system.gmail.config.settings import settings
+from system.gmail.services import (
+    HistoryManager,
+    EmailFetcher,
+    DraftCreator,
+    EmailProcessor
+)
 
 # Configure logging
 logging.basicConfig(
@@ -22,53 +27,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Global variables
-email_service = EmailService()
 running = True
 # Track background tasks to prevent them from being garbage collected
-background_tasks = set()
+background_tasks: Set[asyncio.Task] = set()
 
-
-def is_image_only_email(email: Dict) -> bool:
-    """
-    Check if an email should be skipped based on content.
-    
-    Logic:
-    - Only text -> process (return False)
-    - Only image -> skip (return True)  
-    - Both text and image -> process (return False)
-    - Neither text nor image -> skip (return True)
-    
-    Args:
-        email: Email dictionary containing body and attachments
-        
-    Returns:
-        bool: True if email should be skipped, False if should be processed
-    """
-    # Check if email body has meaningful text content
-    body = email.get("body", "").strip()
-    has_text = bool(body)
-    
-    # Check if email has image attachments
-    attachments = email.get("attachments", [])
-    has_images = any(att.get("is_image", False) for att in attachments)
-    
-    # Skip if no text content (regardless of whether it has images or not)
-    should_skip = not has_text
-    
-    if should_skip:
-        if has_images:
-            image_count = len([att for att in attachments if att.get("is_image", False)])
-            logger.info(
-                f"Email {email.get('id', 'unknown')} from {email.get('sender', 'unknown')} "
-                f"contains only images ({image_count} images, no text). Skipping processing."
-            )
-        else:
-            logger.info(
-                f"Email {email.get('id', 'unknown')} from {email.get('sender', 'unknown')} "
-                f"has no text content or images. Skipping processing."
-            )
-    
-    return should_skip
 
 def signal_handler(signum, frame):
     """Handle shutdown signals"""
@@ -77,188 +39,112 @@ def signal_handler(signum, frame):
     running = False
 
 
-async def process_email_async(email: Dict):
-    """Process a single email asynchronously (background task)"""
-    try:
-        logger.info(
-            f"[BACKGROUND] Processing email from {email['sender']}"
+class GmailPollingService:
+    """Main Gmail polling service using modular architecture"""
+    
+    def __init__(self):
+        self._setup_dependencies()
+    
+    def _setup_dependencies(self):
+        """Setup services with direct dependencies"""
+        # Initialize services
+        self.auth = GmailAuth()
+        self.history_manager = HistoryManager()
+        self.email_fetcher = EmailFetcher(
+            self.auth, 
+            self.history_manager
         )
+        self.draft_creator = DraftCreator(self.auth)
+        self.email_processor = EmailProcessor(self.draft_creator)
+        
+        logger.info("Dependencies configured successfully")
 
-        # Prepare request for external service
-        email_data = {
-            "id": email["id"],
-            "subject": email["subject"],
-            "sender": email["sender"],
-            "body": email["body"],
-            "attachments": email["attachments"] if email["attachments"] else [],
-        }
+    async def process_email_async(self, email: dict):
+        """Process a single email asynchronously (background task)"""
+        try:
+            result = await self.email_processor.process_email(email)
+            if result:
+                logger.info(f"[BACKGROUND] Email processed: {result}")
+            
+        except Exception as e:
+            logger.error(f"[BACKGROUND] Error in email processing: {e}")
 
-        # Call external service to generate reply (non-blocking)
-        response = await call_external_service(email_data)
+    async def start_polling(self):
+        """Start the main polling loop"""
+        global running, background_tasks
 
-        if response:
-            # Extract sender email
-            sender_email = extract_email_address(email["sender"])
+        # Setup signal handlers for graceful shutdown
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
 
-            # Create draft
-            success = email_service.create_draft(
-                to_email=sender_email,
-                body=response["body"],
-                in_reply_to=email["message_id"],
-                thread_id=email["thread_id"],
-            )
+        logger.info("Starting Gmail 24x7 polling service ...")
 
-            if success:
+        # Initialize Gmail service
+        if not self.email_fetcher.initialize():
+            logger.error("Failed to initialize Gmail service")
+            sys.exit(1)
+
+        logger.info("Gmail service initialized. Starting continuous polling...")
+
+        while running:
+            try:
+                # Get new emails (this is fast - just fetching email list)
+                new_emails = self.email_fetcher.get_new_emails()
+
+                if new_emails:
+                    logger.info(
+                        f"[POLLING] Found {len(new_emails)} new emails - creating background tasks"
+                    )
+
+                    # Create background tasks for each email (NON-BLOCKING)
+                    for email in new_emails:
+                        if not running:
+                            break
+
+                        # Create background task - doesn't block polling
+                        task = asyncio.create_task(self.process_email_async(email))
+                        background_tasks.add(task)
+
+                        # Clean up completed tasks to prevent memory leaks
+                        task.add_done_callback(background_tasks.discard)
+
+                    logger.info(
+                        f"[POLLING] Background tasks created. Active tasks: {len(background_tasks)}"
+                    )
+
+                # Continue to next poll immediately (doesn't wait for email processing)
                 logger.info(
-                    f"[BACKGROUND] Draft created for email {email['id']}"
+                    f"[POLLING] Continuing to next poll cycle. Active background tasks: {len(background_tasks)}"
                 )
-            else:
-                logger.error(
-                    f"[BACKGROUND] Failed to create draft for email {email['id']}"
-                )
-        else:
-            logger.warning(
-                f"[BACKGROUND] No response from external service for email {email['id']}"
+                
+                # Get poll interval from settings
+                await asyncio.sleep(settings.POLL_INTERVAL_SECONDS)
+
+            except Exception as e:
+                logger.error(f"[POLLING] Error in polling loop: {e}")
+                await asyncio.sleep(settings.POLL_INTERVAL_SECONDS)
+
+        # Wait for remaining background tasks to complete on shutdown
+        if background_tasks:
+            logger.info(
+                f"Waiting for {len(background_tasks)} background tasks to complete..."
             )
+            await asyncio.gather(*background_tasks, return_exceptions=True)
 
-    except Exception as e:
-        logger.error(
-            f"[BACKGROUND] Error processing email {email.get('id', 'unknown')}: {e}"
-        )
-
-
-async def call_external_service(email_data: Dict) -> Dict:
-    """Generate dummy draft reply for the given email"""
-    try:
-        logger.info(
-            f"Generating dummy draft for email: {email_data.get('id', 'no id')}"
-        )
-
-        # Prepare payload for the API
-        payload = {
-            "subject": email_data.get("subject", "No subject"),
-            "sender": email_data.get("sender", "no sender email"),
-            "body": email_data.get("body", "No body"),
-            "attachments": email_data.get("attachments", []),
-        }
-
-        headers = {"Content-Type": "application/json"}
-
-        async with httpx.AsyncClient(
-            timeout=httpx.Timeout(
-                connect=30.0, read=1600.0, write=600.0, pool=30.0
-            )
-        ) as client:
-            api_response = await client.post(
-                settings.EXTERNAL_SERVICE_URL, json=payload, headers=headers
-            )
-            api_response.raise_for_status()
-            response_data = api_response.json()
-
-        logger.info(
-            f"Successfully generated draft reply for: {email_data.get('id', 'no id')}"
-        )
-
-        # Return the response containing the body field
-
-        return response_data["data"]
-
-    except Exception as e:
-        logger.error(f"Error generating draft response: {e}")
-        return None
-
-
-def extract_email_address(from_header: str) -> str:
-    """Extract email address from 'From' header"""
-    import re
-
-    email_pattern = r"<([^>]+)>|([^\s<>]+@[^\s<>]+)"
-    matches = re.findall(email_pattern, from_header)
-
-    if matches:
-        for match in matches:
-            for group in match:
-                if group and "@" in group:
-                    return group.strip()
-
-    return from_header.strip()
+        logger.info("Gmail polling service stopped")
 
 
 async def main():
-    """Main polling loop - non-blocking approach"""
-    global running, background_tasks
-
-    # Setup signal handlers for graceful shutdown
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
-    logger.info("Starting Gmail 24x7 polling service (NON-BLOCKING MODE)...")
-
-    # Initialize Gmail service
-    if not email_service.initialize():
-        logger.error("Failed to initialize Gmail service")
-        sys.exit(1)
-
-    logger.info("Gmail service initialized. Starting continuous polling...")
-
-    while running:
-        try:
-            # Get new emails (this is fast - just fetching email list)
-            new_emails = email_service.get_new_emails()
-
-            if new_emails:
-                logger.info(
-                    f"[POLLING] Found {len(new_emails)} new emails - creating background tasks"
-                )
-
-                # Create background tasks for each email (NON-BLOCKING)
-                for email in new_emails:
-                    if not running:
-                        break
-
-                    # Skip image-only emails
-                    if is_image_only_email(email):
-                        logger.info(
-                            f"[POLLING] Skipping image-only email {email.get('id', 'unknown')}"
-                        )
-                        continue
-
-                    # Create background task - doesn't block polling
-                    task = asyncio.create_task(process_email_async(email))
-                    background_tasks.add(task)
-
-                    # Clean up completed tasks to prevent memory leaks
-                    task.add_done_callback(background_tasks.discard)
-
-                logger.info(
-                    f"[POLLING] Background tasks created. Active tasks: {len(background_tasks)}"
-                )
-
-            # Continue to next poll immediately (doesn't wait for email processing)
-            logger.info(
-                f"[POLLING] Continuing to next poll cycle. Active background tasks: {len(background_tasks)}"
-            )
-            await asyncio.sleep(settings.POLL_INTERVAL_SECONDS)
-
-        except Exception as e:
-            logger.error(f"[POLLING] Error in polling loop: {e}")
-            await asyncio.sleep(settings.POLL_INTERVAL_SECONDS)
-
-    # Wait for remaining background tasks to complete on shutdown
-    if background_tasks:
-        logger.info(
-            f"Waiting for {len(background_tasks)} background tasks to complete..."
-        )
-        await asyncio.gather(*background_tasks, return_exceptions=True)
-
-    logger.info("Gmail polling service stopped")
-
-
-if __name__ == "__main__":
+    """Main entry point"""
     try:
-        asyncio.run(main())
+        service = GmailPollingService()
+        await service.start_polling()
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
     except Exception as e:
         logger.error(f"Service error: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    asyncio.run(main()) 

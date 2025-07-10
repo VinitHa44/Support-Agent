@@ -1,13 +1,14 @@
 import os
 
-from system.gmail.config import settings
+from system.gmail.config.settings import settings
+from system.gmail.interfaces.interfaces import AuthInterface
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 
-class GmailAuth:
+class GmailAuth(AuthInterface):
     def __init__(self):
         self.creds = None
         self.service = None

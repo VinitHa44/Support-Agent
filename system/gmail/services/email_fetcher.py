@@ -1,70 +1,43 @@
 import base64
-import json
 import logging
-import os
-from datetime import datetime
-from email.mime.text import MIMEText
 from typing import Dict, List, Optional
 
-from system.gmail.oauth_manager import GmailAuth
-from system.gmail.config import settings
 from googleapiclient.errors import HttpError
+
+from system.gmail.interfaces.interfaces import EmailFetcherInterface, HistoryManagerInterface, AuthInterface
 
 logger = logging.getLogger(__name__)
 
 
-class EmailService:
-    def __init__(self):
-        self.auth = GmailAuth()
-        self.service = None
-        self.current_message_id = (
-            None  # For tracking during attachment processing
-        )
-        self.is_first_poll_after_startup = (
-            True  # Flag to track if this is first poll since startup
-        )
+class EmailFetcher(EmailFetcherInterface):
+    """Fetches emails from Gmail using efficient history API"""
+    
+    def __init__(
+        self, 
+        auth: AuthInterface,
+        history_manager: HistoryManagerInterface
+    ):
+        self.auth = auth
+        self.history_manager = history_manager
+        self.gmail_service = None
+        self.is_first_poll_after_startup = True
+        self.current_message_id = None
 
-    def _load_history_id(self) -> Optional[str]:
-        """Load last history ID from JSON file"""
-        try:
-            if os.path.exists(settings.HISTORY_FILE):
-                with open(settings.HISTORY_FILE, "r") as f:
-                    data = json.load(f)
-                    return data.get("last_history_id")
-        except Exception as e:
-            logger.error(f"Error loading history ID: {e}")
-        return None
-
-    def _save_history_id(self, history_id: str):
-        """Save history ID to JSON file"""
-        try:
-            os.makedirs(os.path.dirname(settings.HISTORY_FILE), exist_ok=True)
-            data = {
-                "last_history_id": history_id,
-                "last_updated": datetime.now().isoformat(),
-            }
-            with open(settings.HISTORY_FILE, "w") as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            logger.error(f"Error saving history ID: {e}")
-
-    def initialize(self):
+    def initialize(self) -> bool:
         """Initialize the Gmail service"""
         try:
-            self.service = self.auth.get_service()
+            self.gmail_service = self.auth.get_service()
 
             # Load existing history ID or get current one
-            last_history_id = self._load_history_id()
+            last_history_id = self.history_manager.load_history_id()
 
             if not last_history_id:
                 # Get initial history ID from profile
-                profile = self.service.users().getProfile(userId="me").execute()
+                profile = self.gmail_service.users().getProfile(userId="me").execute()
                 last_history_id = profile.get("historyId")
-                self._save_history_id(last_history_id)
+                self.history_manager.save_history_id(last_history_id)
 
-            logger.info(
-                f"Gmail service initialized. History ID: {last_history_id}"
-            )
+            logger.info(f"Gmail service initialized. History ID: {last_history_id}")
             return True
         except Exception as e:
             logger.error(f"Failed to initialize Gmail service: {e}")
@@ -72,7 +45,7 @@ class EmailService:
 
     def get_new_emails(self) -> List[Dict]:
         """Get new emails since last check using history API for efficiency"""
-        if not self.service:
+        if not self.gmail_service:
             if not self.initialize():
                 return []
 
@@ -87,9 +60,9 @@ class EmailService:
                 new_emails = self._get_recent_unread_emails()
 
                 # After startup poll, get current history ID for future polls
-                profile = self.service.users().getProfile(userId="me").execute()
+                profile = self.gmail_service.users().getProfile(userId="me").execute()
                 current_history_id = profile.get("historyId")
-                self._save_history_id(current_history_id)
+                self.history_manager.save_history_id(current_history_id)
 
                 # Mark that startup is complete
                 self.is_first_poll_after_startup = False
@@ -99,11 +72,11 @@ class EmailService:
 
             else:
                 # Normal flow after startup: Use history API to get changes since last check
-                last_history_id = self._load_history_id()
+                last_history_id = self.history_manager.load_history_id()
 
                 if last_history_id:
                     history_response = (
-                        self.service.users()
+                        self.gmail_service.users()
                         .history()
                         .list(
                             userId="me",
@@ -117,7 +90,7 @@ class EmailService:
                     if changes:
                         # Update and save history ID
                         new_history_id = history_response.get("historyId")
-                        self._save_history_id(new_history_id)
+                        self.history_manager.save_history_id(new_history_id)
 
                         # Process new messages
                         for change in changes:
@@ -151,7 +124,7 @@ class EmailService:
 
             # Search for unread emails in inbox, get only the most recent one
             results = (
-                self.service.users()
+                self.gmail_service.users()
                 .messages()
                 .list(
                     userId="me",
@@ -193,7 +166,7 @@ class EmailService:
 
             # Get message details without marking as read
             message = (
-                self.service.users()
+                self.gmail_service.users()
                 .messages()
                 .get(userId="me", id=message_id, format="full")
                 .execute()
@@ -260,18 +233,13 @@ class EmailService:
                 return header["value"]
         return ""
 
-    def _extract_content_and_attachments(
-        self, payload: Dict
-    ) -> tuple[str, List[Dict]]:
+    def _extract_content_and_attachments(self, payload: Dict) -> tuple[str, List[Dict]]:
         """Extract email body and attachment information from payload"""
         body = ""
-        attachments = []
-
+        
         def process_part(part):
-            nonlocal body, attachments
-
+            nonlocal body
             mime_type = part.get("mimeType", "")
-            filename = part.get("filename", "")
 
             # Handle text content
             if mime_type == "text/plain":
@@ -282,8 +250,58 @@ class EmailService:
                     if text_data.strip():
                         body = text_data
 
+        # Process payload parts for body content
+        if "parts" in payload:
+            # Multipart message
+            for part in payload["parts"]:
+                if "parts" in part:
+                    # Nested multipart
+                    for nested_part in part["parts"]:
+                        process_part(nested_part)
+                else:
+                    process_part(part)
+        else:
+            # Single part message
+            process_part(payload)
+
+        # Get attachments using integrated attachment processing
+        attachments = self._process_attachments(payload)
+
+        return body, attachments
+
+    def _get_attachment_data(self, message_id: str, attachment_id: str) -> Optional[bytes]:
+        """Download attachment data from Gmail"""
+        try:
+            if not self.gmail_service:
+                logger.error("Gmail service not available")
+                return None
+                
+            attachment = (
+                self.gmail_service.users()
+                .messages()
+                .attachments()
+                .get(userId="me", messageId=message_id, id=attachment_id)
+                .execute()
+            )
+
+            # Decode attachment data
+            data = base64.urlsafe_b64decode(attachment["data"])
+            return data
+
+        except Exception as e:
+            logger.error(f"Error downloading attachment {attachment_id}: {e}")
+            return None
+
+    def _process_attachments(self, payload: Dict) -> List[Dict]:
+        """Process attachments from email payload"""
+        attachments = []
+
+        def process_part(part):
+            mime_type = part.get("mimeType", "")
+            filename = part.get("filename", "")
+
             # Handle attachments (including images)
-            elif filename and part.get("body", {}).get("attachmentId"):
+            if filename and part.get("body", {}).get("attachmentId"):
                 attachment_info = {
                     "filename": filename,
                     "mime_type": mime_type,
@@ -298,7 +316,7 @@ class EmailService:
                 # For images, add base64 data for AI processing
                 if attachment_info["is_image"]:
                     try:
-                        image_data = self.get_attachment_data(
+                        image_data = self._get_attachment_data(
                             self.current_message_id,
                             part["body"]["attachmentId"],
                         )
@@ -340,80 +358,4 @@ class EmailService:
             # Single part message
             process_part(payload)
 
-        return body, attachments
-
-    def get_attachment_data(
-        self, message_id: str, attachment_id: str
-    ) -> Optional[bytes]:
-        """Download attachment data from Gmail"""
-        try:
-            attachment = (
-                self.service.users()
-                .messages()
-                .attachments()
-                .get(userId="me", messageId=message_id, id=attachment_id)
-                .execute()
-            )
-
-            # Decode attachment data
-            data = base64.urlsafe_b64decode(attachment["data"])
-            return data
-
-        except Exception as e:
-            logger.error(f"Error downloading attachment {attachment_id}: {e}")
-            return None
-
-    def create_draft(
-        self,
-        to_email: str,
-        body: str,
-        in_reply_to: str = None,
-        thread_id: str = None,
-    ) -> bool:
-        """Create a draft email"""
-        try:
-            if not self.service:
-                if not self.initialize():
-                    return False
-
-            # Prepare email message
-            message = {
-                "raw": self._create_message_raw(
-                    to_email, body, in_reply_to
-                )
-            }
-
-            # Create draft
-            draft_body = {"message": message}
-
-            if thread_id:
-                draft_body["message"]["threadId"] = thread_id
-
-            draft = (
-                self.service.users()
-                .drafts()
-                .create(userId="me", body=draft_body)
-                .execute()
-            )
-
-            logger.info(f"Draft created successfully: {draft['id']}")
-            return True
-
-        except Exception as e:
-            logger.error(f"Error creating draft: {e}")
-            return False
-
-    def _create_message_raw(
-        self, to_email: str, body: str, in_reply_to: str = None
-    ) -> str:
-        """Create raw email message"""
-        message = MIMEText(body)
-        message["to"] = to_email
-        if in_reply_to:
-            message["In-Reply-To"] = in_reply_to
-            message["References"] = in_reply_to
-
-        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode(
-            "utf-8"
-        )
-        return raw_message
+        return attachments 
