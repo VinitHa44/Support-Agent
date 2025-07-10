@@ -136,9 +136,10 @@ class DraftGenerationOrchestrationUsecase:
             is_skip = False  # Single draft is never considered skipped
 
         try:
-            await self.template_storage_usecase.store_response_template(
-                categorization_response, final_draft_body
-            )
+            if not is_skip:
+                await self.template_storage_usecase.store_response_template(
+                    categorization_response, final_draft_body
+                )
         except Exception as e:
             logging.warning(f"Failed to store final response template: {e}")
 
