@@ -39,7 +39,6 @@ class GenerateDraftsUsecase:
             attachments = query.get("attachments", [])
             categories = query.get("categories", [])
 
-            # Validate input data
             rocket_docs_response, dataset_response = (
                 await self.helper.format_pinecone_results(
                     rocket_docs_response, dataset_response
@@ -82,7 +81,7 @@ class GenerateDraftsUsecase:
                 call_params["images"] = images
 
             # Check if categories is empty to determine drafts generation strategy
-            if categories and len(categories) > 0:
+            if categories and len(categories) > 0 and len(dataset_response) > 4:
                 # Categories exist - generate single draft
                 gemini_response = await self.gemini_service.generate_response(
                     **call_params

@@ -21,10 +21,9 @@ class DataInsertUsecaseHelper:
         self.embedding_service = embedding_service
         self.pinecone_service = pinecone_service
 
-    def _generate_vector_id(self, query: str, categories: List[str]) -> str:
+    def _generate_vector_id(self, query: str, subject: str) -> str:
         """Generate a unique vector ID based on query and category"""
-        category_str = "_".join(categories)
-        combined = f"{query}_{category_str}"
+        combined = f"{query}_{subject}"
         return hashlib.sha256(combined.encode()).hexdigest()
 
     async def generate_embeddings(self, examples: List[Dict]) -> List[Dict]:
@@ -82,7 +81,7 @@ class DataInsertUsecaseHelper:
 
             vector_data = {
                 "id": self._generate_vector_id(
-                    example["query"], example["categories"]
+                    example["query"], example["subject"]
                 ),
                 "values": chunk["dense"],  # Dense embeddings
                 "sparse_values": {
@@ -97,7 +96,12 @@ class DataInsertUsecaseHelper:
                     "subject": example["subject"],
                 },
             }
-            loggers["data_insert"].info(f"Vector id: {vector_data['id']}")
+            data = {
+                "id": vector_data["id"],
+                "query": vector_data["metadata"]["content"],
+                "subject": vector_data["metadata"]["subject"],
+            }
+            loggers["data_insert"].info(f"data: {data}")
             vectors_to_upsert.append(vector_data)
 
         if vectors_to_upsert:
