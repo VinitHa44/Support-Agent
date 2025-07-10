@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 from typing import Dict, List, Optional
 
 from fastapi import Depends
@@ -44,6 +45,10 @@ class GenerateDraftsUsecase:
                     rocket_docs_response, dataset_response
                 )
             )
+            with open("5_intermediate_outputs/rocket_docs_response.json", "w") as f:
+                json.dump(rocket_docs_response, f)
+            with open("6_intermediate_outputs/dataset_response.json", "w") as f:
+                json.dump(dataset_response, f)
 
             # Prepare user prompt with formatted data
             user_prompt = self.helper.format_user_prompt(
@@ -107,6 +112,9 @@ class GenerateDraftsUsecase:
                 print(drafts_1)
                 drafts_2 = response_2.get("body", "")
                 drafts = [drafts_1, drafts_2]
+            
+            with open("intermediate_outputs/7_generate_drafts_llm_response.json", "w") as f:
+                json.dump(drafts, f)
 
             final_response = {
                 "from": query.get("from", ""),

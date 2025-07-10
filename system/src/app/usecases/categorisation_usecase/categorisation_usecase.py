@@ -1,7 +1,7 @@
 from typing import Any, Dict
-
+import json
 from fastapi import Depends, HTTPException
-
+import os
 from system.src.app.services.gemini_service import GeminiService
 from system.src.app.usecases.categorisation_usecase.helper import (
     CategorizationHelper,
@@ -39,6 +39,7 @@ class CategorizationUsecase:
         :return: Dictionary with categorization results
         """
         try:
+            os.makedirs("intermediate_outputs", exist_ok=True)
             # Validate required fields
             self.helper.validate_email_data(email_data)
 
@@ -70,6 +71,8 @@ class CategorizationUsecase:
             # Parse the JSON response using the response parser utility
             try:
                 categorization_result = parse_response(response_text)
+                with open("intermediate_outputs/1_categorization_llm_response.json", "w") as f:
+                    json.dump(categorization_result, f)
 
                 # Ensure we have a valid dict response
                 if not isinstance(categorization_result, dict):
@@ -85,6 +88,9 @@ class CategorizationUsecase:
             processed_result = self.helper.validate_and_process_result(
                 categorization_result, email_data
             )
+
+            with open("intermediate_outputs/2_processed_result.json", "w") as f:
+                json.dump(processed_result, f)
 
             # Return simplified format as requested
             return {

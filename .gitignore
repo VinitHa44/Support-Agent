@@ -7,7 +7,7 @@ struct_logs/
 bm25_encoder.pkl
 session-data/
 problem_statement_and_system_working.md
-
+intermediate_outputs/
 
 
 # Byte-compiled / optimized / DLL files

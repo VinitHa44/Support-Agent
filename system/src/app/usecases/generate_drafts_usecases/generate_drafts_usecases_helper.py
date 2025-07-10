@@ -1,5 +1,5 @@
 from typing import Dict, List, Tuple
-
+import json
 from system.src.app.prompts.generate_drafts_prompts import (
     GENERATE_DRAFTS_USER_PROMPT,
 )
@@ -39,6 +39,10 @@ class GenerateDraftsHelper:
     async def format_pinecone_results(
         self, rocket_docs_response: List[Dict], dataset_response: List[Dict]
     ) -> Tuple[List[Dict], List[Dict]]:
+        with open("intermediate_outputs/3_pinecone_rocket_docs_response.json", "w") as f:
+            json.dump(rocket_docs_response, f)
+        with open("intermediate_outputs/4_pinecone_dataset_response.json", "w") as f:
+            json.dump(dataset_response, f)
         if rocket_docs_response:
             rocket_docs_response = await self.format_rocket_docs_response(
                 rocket_docs_response
