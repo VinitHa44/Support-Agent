@@ -52,14 +52,13 @@ class EmailFetcher(EmailFetcherInterface):
         try:
             new_emails = []
 
-            # MANDATORY: Always fetch most recent unread email on startup, regardless of stored history
+            # FIRST POLL: Skip processing emails, just update historyID for future polls
             if self.is_first_poll_after_startup:
                 logger.info(
-                    "STARTUP: Mandatory fetch of most recent unread email (ignoring stored history)"
+                    "STARTUP: First polling turn - skipping email processing, just updating historyID"
                 )
-                new_emails = self._get_recent_unread_emails()
-
-                # After startup poll, get current history ID for future polls
+                
+                # Get current history ID for future polls without processing any emails
                 profile = self.gmail_service.users().getProfile(userId="me").execute()
                 current_history_id = profile.get("historyId")
                 self.history_manager.save_history_id(current_history_id)
@@ -67,8 +66,11 @@ class EmailFetcher(EmailFetcherInterface):
                 # Mark that startup is complete
                 self.is_first_poll_after_startup = False
                 logger.info(
-                    f"STARTUP: Complete. Set history ID to {current_history_id} for future polls"
+                    f"STARTUP: Complete. Set history ID to {current_history_id} for future polls. No emails processed on first turn."
                 )
+                
+                # Return empty list - no emails to process on first poll
+                new_emails = []
 
             else:
                 # Normal flow after startup: Use history API to get changes since last check
