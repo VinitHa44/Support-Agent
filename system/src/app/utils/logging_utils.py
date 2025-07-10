@@ -105,4 +105,5 @@ loggers = {
     "pinecone": setup_logger("pinecone_service", "pinecone_service.log"),
     "requests": setup_logger("requests", "requests.log"),
     "voyageai": setup_logger("voyageai", "voyageai.log"),
+    "data_insert": setup_logger("data_insert", "data_insert.log"),
 }
