@@ -1,5 +1,5 @@
 import httpx
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 
 from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.config.settings import settings
@@ -64,9 +64,10 @@ class RerankerService:
                     "operation": "voyage_rerank",
                 },
             )
+            error_msg = f"HTTP error: {exc.response.status_code} - {exc.response.text} - {str(exc)}"
             raise HTTPException(
-                status_code=exc.response.status_code,
-                detail=f"HTTP error: {exc.response.status_code} - {exc.response.text} - {str(exc)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_msg,
             )
         except httpx.RequestError as exc:
             await self.error_repo.log_error(
@@ -80,12 +81,15 @@ class RerankerService:
                     "operation": "voyage_rerank",
                 },
             )
+            error_msg = f"Failed to connect to API: {str(exc)}"
             raise HTTPException(
-                status_code=502, detail="Failed to connect to API"
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=error_msg,
             )
         except Exception as exc:    
+            error_msg = f"Error in voyage rerank: {str(exc)}"
             await self.error_repo.log_error(
-                error=exc,
+                error=error_msg,
                 additional_context={
                     "file": "re_ranking_service.py",
                     "method": "voyage_rerank",
@@ -93,4 +97,4 @@ class RerankerService:
                     "operation": "voyage_rerank",
                 },
             )
-            raise HTTPException(status_code=500, detail=str(exc))
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)

@@ -54,14 +54,14 @@ class PineconeQueryUseCase:
                 )
 
         except Exception as e:
+            error_msg = f"Error generating embedding: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "pinecone_query_usecase.py",
                     "method": "_get_query_embeddings",
                     "operation": "query_embedding_generation",
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                     "query": query[:100] if query else "",  # Truncate query for logging
                     "embed_model": embed_model,
                     "dimension": dimension,
@@ -69,8 +69,8 @@ class PineconeQueryUseCase:
             )
             loggers["main"].error(f"Error generating embedding {str(e)}")
             raise HTTPException(
-                status_code=500,
-                detail=f"Error while generating the embeddings of querying docs: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_msg,
             )
 
     async def random_query(
@@ -160,14 +160,14 @@ class PineconeQueryUseCase:
             return final_responses
 
         except Exception as e:
+            error_msg = f"Error in random_query_usecase: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "pinecone_query_usecase.py",
                     "method": "random_query",
                     "operation": "pinecone_query_execution",
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                     "query": query[:100] if query else "",  # Truncate query for logging
                     "index_name": index_name,
                     "top_k": top_k,
@@ -177,5 +177,5 @@ class PineconeQueryUseCase:
             )
             loggers["main"].error(f"Error in random_query_usecase: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg
             )

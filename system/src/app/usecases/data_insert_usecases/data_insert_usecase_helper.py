@@ -1,7 +1,7 @@
 import hashlib
 from typing import Dict, List
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 
 from system.src.app.config.settings import settings
 from system.src.app.repositories.error_repository import ErrorRepo
@@ -63,21 +63,18 @@ class DataInsertUsecaseHelper:
                     all_embeddings.append(embedding_data)
 
             except Exception as e:
+                error_msg = f"Error generating embeddings: {str(e)}"
                 await self.error_repo.log_error(
-                    error=e,
+                    error=error_msg,
                     additional_context={
                         "file": "data_insert_usecase_helper.py",
                         "method": "generate_embeddings",
                         "operation": "batch_embedding_generation",
-                        "status_code": 500,
-                        "response_text": str(e),
+                        "response_text": error_msg,
                         "batch_index": i // batch_size,
                         "batch_size": len(batch),
                         "total_examples": len(examples),
                     },
-                )
-                loggers["main"].error(
-                    f"Error generating embeddings for batch: {str(e)}"
                 )
                 continue
 
@@ -173,21 +170,18 @@ class DataInsertUsecaseHelper:
                 )
 
         except Exception as e:
+            error_msg = f"Error ensuring Pinecone index exists: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "data_insert_usecase_helper.py",
                     "method": "ensure_pinecone_index_exists",
                     "operation": "pinecone_index_management",
                     "target_index": settings.PINECONE_INDEX_NAME,
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                 },
             )
-            loggers["main"].error(
-                f"Error ensuring Pinecone index exists: {str(e)}"
-            )
             raise HTTPException(
-                status_code=500,
-                detail=f"Failed to ensure Pinecone index exists: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_msg,
             )

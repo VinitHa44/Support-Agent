@@ -124,15 +124,15 @@ class RequestLoggingUsecase:
             )
         
         except Exception as e:
+            error_msg = f"Failed to log request: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "request_logging_usecase.py",
                     "method": "log_request",
                     "operation": "request_logging",
                     "request_id": query.get("id", "unknown"),
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                     "user_id": user_id,
                     "subject": categorization_response.get("subject", ""),
                     "processing_time": processing_time,

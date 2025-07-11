@@ -40,8 +40,9 @@ class DataInsertUsecase:
             return examples
 
         except json.JSONDecodeError as e:
+            error_msg = f"Invalid JSON format: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "data_insert_usecase.py",
                     "method": "_process_file",
@@ -49,20 +50,20 @@ class DataInsertUsecase:
                     "filename": file.filename if file else "unknown",
                 },
             )
-            return {"error": "Invalid JSON format"}
+            return {"error": error_msg}
         except Exception as e:
+            error_msg = f"Error processing file: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "data_insert_usecase.py",
                     "method": "_process_file",
                     "operation": "file_processing",
                     "filename": file.filename if file else "unknown",
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                 },
             )
-            return {"error": f"Error processing file: {str(e)}"}
+            return {"error": error_msg}
 
     async def execute(
         self,
@@ -104,8 +105,9 @@ class DataInsertUsecase:
                 "status": "success",
             }
         except Exception as e:
+            error_msg = f"Error processing execute function in data_insert_usecase: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "data_insert_usecase.py",
                     "method": "execute",
@@ -113,10 +115,9 @@ class DataInsertUsecase:
                     "has_file": file is not None,
                     "has_template": new_template is not None,
                     "template_size": len(new_template) if new_template else 0,
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                 },
             )
             return {
-                "error": f"Error processing execute function in data_insert_usecase: {str(e)}"
+                "error": error_msg
             }

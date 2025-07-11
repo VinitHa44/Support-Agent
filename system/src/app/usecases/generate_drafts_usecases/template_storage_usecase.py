@@ -52,14 +52,14 @@ class TemplateStorageUsecase:
             return result
 
         except Exception as e:
+            error_msg = f"Failed to store response template: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "template_storage_usecase.py",
                     "method": "store_response_template",
                     "operation": "template_storage",
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                     "subject": categorization_response.get("subject", ""),
                     "categories": categorization_response.get("categories", []),
                     "new_categories": categorization_response.get("new_categories", []),
@@ -67,5 +67,5 @@ class TemplateStorageUsecase:
                 },
             )
             # Log the error but don't fail the main process
-            print(f"Warning: Failed to store response template: {str(e)}")
+            print(f"Warning: Failed to store response template: {error_msg}")
             raise e

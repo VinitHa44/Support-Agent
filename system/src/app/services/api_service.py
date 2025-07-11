@@ -96,13 +96,30 @@ class ApiService:
                     )
                 response.raise_for_status()
                 return response.json()
+        except httpx.RequestError as exc:
+            await self.error_repo.log_error(
+                error=exc,
+                additional_context={
+                    "file": "api_service.py",
+                    "method": "POST",
+                    "url": str(exc.request.url),
+                    "operation": "api_service.post",
+                },
+            )
+            error_msg = (
+                f"An error occurred while requesting {exc.request.url!r}."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_msg,
+            )
         except httpx.HTTPStatusError as exc:
             await self.error_repo.log_error(
                 error=exc,
                 additional_context={
                     "file": "api_service.py",
                     "method": "POST",
-                    "url": url,
+                    "url": str(exc.request.url),
                     "status_code": exc.response.status_code,
                     "response_text": (
                         exc.response.text
@@ -112,27 +129,16 @@ class ApiService:
                     "operation": "api_service.post",
                 },
             )
+            error_msg = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"API request failed with error: {exc.response.text} {str(exc)}",
-            )
-        except httpx.RequestError as exc:
-            await self.error_repo.log_error(
-                error=exc,
-                additional_context={
-                    "file": "api_service.py",
-                    "method": "POST",
-                    "url": url,
-                    "operation": "api_service.post",
-                },
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"API request failed with error: {str(exc)}",
+                detail=error_msg,
             )
         except Exception as exc:
+            error_msg = f"Error has occurred in api_service.post: {str(exc)}"
             await self.error_repo.log_error(
-                error=exc,
+                error=error_msg,
                 additional_context={
                     "file": "api_service.py",
                     "method": "POST",
@@ -142,5 +148,5 @@ class ApiService:
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"API request failed with error: {str(exc)}",
+                detail=error_msg,
             )

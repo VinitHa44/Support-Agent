@@ -129,14 +129,14 @@ class GenerateDraftsUsecase:
             return final_response
 
         except Exception as e:
+            error_msg = f"Error generating drafts: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "generate_drafts_usecase.py",
                     "method": "generate_drafts",
                     "operation": "generate_drafts",
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                     "sender": query.get("from", ""),
                     "subject": query.get("subject", ""),
                     "categories": query.get("categories", []),
@@ -148,7 +148,7 @@ class GenerateDraftsUsecase:
                 "subject": query.get("subject", ""),
                 "body": query.get("body", ""),
                 "drafts": [],
-                "error": str(e),
+                "error": error_msg,
             }
 
     def _process_attachments(self, attachments: List) -> Optional[List[Dict]]:

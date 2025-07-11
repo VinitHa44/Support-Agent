@@ -144,14 +144,14 @@ class DraftGenerationOrchestrationUsecase:
                     categorization_response, final_draft_body
                 )
         except Exception as e:
+            error_msg = f"Failed to store final response template: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "draft_generation_orchestration_usecase.py",
                     "method": "execute_draft_generation_workflow",
                     "operation": "template_storage",
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                     "user_id": user_id,
                     "subject": categorization_response.get("subject", ""),
                     "categories": categorization_response.get("categories", []),
@@ -211,8 +211,9 @@ class DraftGenerationOrchestrationUsecase:
                 return {**draft_data, "drafts": [first_draft]}, False
 
         except WebSocketTimeoutError as e:
+            error_msg = f"WebSocket timeout: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "draft_generation_orchestration_usecase.py",
                     "method": "_handle_review_process",
@@ -225,16 +226,16 @@ class DraftGenerationOrchestrationUsecase:
             first_draft = draft_data.get("drafts", [""])[0]
             return {**draft_data, "drafts": [first_draft]}, False
         except Exception as e:
+            error_msg = f"An unexpected error occurred during draft review: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "draft_generation_orchestration_usecase.py",
                     "method": "_handle_review_process",
                     "operation": "draft_review_process",
                     "user_id": user_id,
                     "draft_count": len(draft_data.get("drafts", [])),
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                 },
             )
             logging.error(

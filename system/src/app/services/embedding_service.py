@@ -2,7 +2,7 @@ import logging
 import pickle
 
 import httpx
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 
 from system.src.app.config.settings import settings
 from system.src.app.utils.logging_utils import loggers
@@ -78,7 +78,7 @@ class EmbeddingService:
                 additional_context={
                     "file": "embedding_service.py",
                     "method": "pinecone_dense_embeddings",
-                    "url": self.dense_embed_url,
+                    "url": str(exc.request.url),
                     "status_code": exc.response.status_code,
                     "response_text": (
                         exc.response.text
@@ -91,7 +91,7 @@ class EmbeddingService:
 
             error_msg = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."  
             raise HTTPException(
-                status_code=exc.response.status_code, detail=error_msg
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg
             )
         except Exception as e:
             error_msg = f"Error dense embeddings in pinecone dense embeddings: {str(e)}"
@@ -104,7 +104,7 @@ class EmbeddingService:
                     "operation": "pinecone_dense_embeddings",
                 },
             )
-            raise HTTPException(status_code=500, detail=error_msg)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_msg)
 
     def pinecone_sparse_embeddings(self, inputs):
         try:
@@ -113,4 +113,4 @@ class EmbeddingService:
 
         except Exception as e:
             loggers["main"].error(f"Error creating sparse embeddings: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

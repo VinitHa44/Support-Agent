@@ -236,10 +236,10 @@ python -m system.gmail.email_polling_daemon
 
 ## 📚 Approach Documentation
 
-[Approach Documentation](https://grizzly-stargazer-98d.notion.site/Velocity-new-22864f7761058047b4b7e604bafaf92c?source=copy_link)
+[Approach Documentation](https://supreme-eel-fa5.notion.site/Approach-Documentation-22dba7d69da58011a253c9cbd71947cd?source=copy_link)
 
 <div align="center">
-  <strong>Built with ❤️ by the team email support agent</strong>
+  <strong>Built with ❤️ by the team Rocket Support Agent</strong>
   <br>
 </div>
 

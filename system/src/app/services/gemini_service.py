@@ -2,11 +2,12 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 
 from system.src.app.config.settings import settings
 from system.src.app.repositories.llm_usage_repository import LLMUsageRepository
 from system.src.app.services.api_service import ApiService
+from system.src.app.repositories.error_repository import ErrorRepo
 
 
 class GeminiService:
@@ -14,6 +15,7 @@ class GeminiService:
         self,
         api_service: ApiService = Depends(),
         llm_usage_repository: LLMUsageRepository = Depends(),
+        error_repo: ErrorRepo = Depends(ErrorRepo),
     ) -> None:
         self.api_key = settings.GEMINI_API_KEY
         self.url = f"{settings.GEMINI_URL}{self.api_key}"
@@ -21,7 +23,8 @@ class GeminiService:
         self.api_service = api_service
         self.llm_usage_repository = llm_usage_repository
         self.max_output_tokens = 40000
-
+        self.error_repo = error_repo
+        
     async def generate_response(
         self,
         user_prompt: str,
@@ -124,7 +127,17 @@ class GeminiService:
             # Re-raise HTTPException from ApiService
             raise
         except Exception as e:
+            error_msg = f"Error processing Gemini API request: {str(e)}"
+            await self.error_repo.log_error(
+                error=error_msg,
+                additional_context={
+                    "file": "gemini_service.py",
+                    "method": "generate_response",
+                    "url": self.url,
+                    "operation": "gemini_response_generation",
+                },
+            )
             raise HTTPException(
-                status_code=500,
-                detail=f"Error processing Gemini API request: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_msg,
             )

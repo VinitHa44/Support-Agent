@@ -2,7 +2,7 @@ import json
 import os
 from typing import Any, Dict
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 
 from system.src.app.repositories.error_repository import ErrorRepo
 from system.src.app.services.gemini_service import GeminiService
@@ -87,22 +87,21 @@ class CategorizationUsecase:
                     raise ValueError("Response is not a valid dictionary")
 
             except Exception as e:
+                error_msg = f"Invalid JSON response from Gemini API: {str(e)}. Response: {response_text[:500]}"
                 await self.error_repo.log_error(
-                    error=e,
+                    error=error_msg,
                     additional_context={
                         "file": "categorisation_usecase.py",
                         "method": "execute",
                         "operation": "gemini_response_parsing",
-                        "status_code": 500,
-                        "response_text": str(e),
                         "response_text": response_text[:500] if response_text else "",
                         "subject": subject,
                         "has_images": has_images,
                     },
                 )
                 raise HTTPException(
-                    status_code=500,
-                    detail=f"Invalid JSON response from Gemini API: {str(e)}. Response: {response_text[:500]}",
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=error_msg,
                 )
 
             # Validate and process the result
@@ -124,14 +123,14 @@ class CategorizationUsecase:
             }
 
         except Exception as e:
+            error_msg = f"Error in categorization usecase: {str(e)}"
             await self.error_repo.log_error(
-                error=e,
+                error=error_msg,
                 additional_context={
                     "file": "categorisation_usecase.py",
                     "method": "execute",
                     "operation": "email_categorization",
-                    "status_code": 500,
-                    "response_text": str(e),
+                    "response_text": error_msg,
                     "email_id": email_data.get("id", ""),
                     "subject": email_data.get("subject", ""),
                     "sender": email_data.get("sender", ""),
@@ -139,6 +138,6 @@ class CategorizationUsecase:
                 },
             )
             raise HTTPException(
-                status_code=500,
-                detail=f"Error in categorization usecase: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=error_msg,
             )
