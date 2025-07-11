@@ -46,7 +46,7 @@ The system operates as a 24/7 automated support agent that:
 
 #### **Data Flow**
 ```
-Gmail Email → Categorization → Documentation Search → Draft Generation → Human Review → Gmail Draft
+Incoming Email → Categorization → Documentation Search → Draft Generation → Human Review → Gmail Draft
 ```
 
 #### **Technology Stack**
@@ -112,7 +112,7 @@ mkdir -p session-data/tokens
 
 **IMPORTANT**: You need to obtain these files from the project's Google Drive and place them in the correct locations:
 
-📁 **Google Drive Link**: [Access Required Files Here](https://drive.google.com/drive/folders/1hZCvJH2n0Bibgr_pPu3KDRH9lWyULOx0?usp=sharing) *(Link will be provided separately)*
+📁 **Google Drive Link**: [Access Required Files Here](https://drive.google.com/drive/folders/1hZCvJH2n0Bibgr_pPu3KDRH9lWyULOx0?usp=sharing)
 
 #### 3.1 Gmail Credentials
 - **File**: `credentials.json`
@@ -162,10 +162,6 @@ VOYAGEAI_API_KEY=your_voyageai_api_key
 
 # OpenAI Settings (Optional)
 OPENAI_API_KEY=your_openai_api_key
-
-# MongoDB Settings
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DB_NAME=rocket-support-agent
 ```
 
 ### Step 5: Frontend Setup
