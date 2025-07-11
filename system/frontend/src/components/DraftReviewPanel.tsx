@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Edit2, Send, Mail, User, FileText, CheckCircle, RotateCcw, X } from 'lucide-react';
 
 interface DraftData {
@@ -18,6 +18,24 @@ const DraftReviewPanel: React.FC<DraftReviewPanelProps> = ({ draftData, onSend, 
   const [selectedDraftIndex, setSelectedDraftIndex] = useState(0);
   const [editedDraft, setEditedDraft] = useState(draftData.drafts[0] || '');
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Create a unique identifier for the current draft data to detect when new data arrives
+  const currentDraftId = useRef<string>('');
+  
+  // Effect to handle new draft data
+  useEffect(() => {
+    // Create a unique identifier for this draft data
+    const newDraftId = `${draftData.from}-${draftData.subject}-${draftData.drafts.join('|')}`;
+    
+    // Only reset state if we received genuinely new draft data
+    if (currentDraftId.current !== newDraftId) {
+      console.log('New draft data detected, resetting to draft 1');
+      setSelectedDraftIndex(0);
+      setEditedDraft(draftData.drafts[0] || '');
+      setIsEditing(false);
+      currentDraftId.current = newDraftId;
+    }
+  }, [draftData]);
 
   const handleDraftSelect = (index: number) => {
     setSelectedDraftIndex(index);

@@ -58,6 +58,12 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str = Query(...)):
                 # Handle connection test response - no action needed
                 pass
 
+            elif message_type == "connection_test":
+                # Handle connection test from frontend - respond with connection_test_response
+                await websocket_manager.send_message(
+                    user_id, {"type": "connection_test_response"}
+                )
+
             elif message_type == "status":
                 # Handle status updates
                 await websocket_manager.send_message(

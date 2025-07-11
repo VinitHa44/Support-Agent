@@ -9,29 +9,16 @@ const NotificationPermissionPopup: React.FC = () => {
     const hasSeenPopup = localStorage.getItem('notificationPopupShown');
     const notificationPermission = Notification.permission;
     
-    // Debug logging
-    console.log('NotificationPermissionPopup - Debug Info:');
-    console.log('Has seen popup:', hasSeenPopup);
-    console.log('Notification permission:', notificationPermission);
-    console.log('Should show popup:', !hasSeenPopup && notificationPermission !== 'granted');
-    
-    // TEMPORARY: Force show for testing - remove this line later
-    setShowPopup(true);
-    
     // Only show if it's the first time and notifications are not already granted
-    // if (!hasSeenPopup && notificationPermission !== 'granted') {
-    //   console.log('Showing notification popup');
-    //   setShowPopup(true);
-    // }
+    if (!hasSeenPopup && notificationPermission !== 'granted') {
+      setShowPopup(true);
+    }
   }, []);
 
   const handleClose = () => {
     setShowPopup(false);
     localStorage.setItem('notificationPopupShown', 'true');
   };
-
-  // Debug: Log when component renders
-  console.log('NotificationPermissionPopup render - showPopup:', showPopup);
 
   if (!showPopup) return null;
 
