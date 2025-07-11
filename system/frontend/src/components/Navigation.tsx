@@ -2,23 +2,27 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BarChart3, MessageSquare, Activity, Moon, Sun } from 'lucide-react';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useDraft } from '../contexts/DraftContext';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { draftQueue } = useDraft();
 
   const navigationItems = [
     {
       path: '/',
       name: 'Draft Review',
       icon: MessageSquare,
-      description: 'Review and approve email drafts'
+      description: 'Review and approve email drafts',
+      showBadge: true
     },
     {
       path: '/dashboard',
       name: 'Analytics Dashboard',
       icon: BarChart3,
-      description: 'View analytics and statistics'
+      description: 'View analytics and statistics',
+      showBadge: false
     }
   ];
 
@@ -46,12 +50,13 @@ const Navigation: React.FC = () => {
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
+                const hasPendingDrafts = item.showBadge && draftQueue.length > 0;
                 
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`relative flex items-center px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
                       isActive
                         ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white'
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -60,6 +65,11 @@ const Navigation: React.FC = () => {
                   >
                     <Icon className="h-4 w-4 mr-2" />
                     {item.name}
+                    {hasPendingDrafts && (
+                      <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[20px] h-5">
+                        {draftQueue.length}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
