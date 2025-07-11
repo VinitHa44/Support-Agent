@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Navigation from './components/Navigation';
+import Footer from './components/Footer';
+import NotificationPermissionPopup from './components/NotificationPermissionPopup';
 import DraftReviewPage from './pages/DraftReviewPage';
 import Dashboard from './components/Dashboard';
 import { DarkModeProvider } from './contexts/DarkModeContext';
@@ -11,13 +13,19 @@ function App() {
   return (
     <DarkModeProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200 flex flex-col">
           <Navigation />
           
-          <Routes>
-            <Route path="/" element={<DraftReviewPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-          </Routes>
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<DraftReviewPage />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+            </Routes>
+          </main>
+          
+          <Footer />
+          
+          <NotificationPermissionPopup />
           
           <ToastContainer 
             position="top-right"
