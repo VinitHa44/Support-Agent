@@ -121,7 +121,12 @@ BAD Response: {{"category": ["UNKNOWN"], "query_for_search": null, "new_category
 CORRECT Response: {{"category": ["unspecified_issue_inquiry"], "query_for_search": null, "new_category_name": null, "new_category_description": null}}"""
 
 # User prompt template for email categorization
-USER_PROMPT_TEMPLATE = """Subject: {subject}
+USER_PROMPT_TEMPLATE = """
+Here's the detail about the user email:
 
-Body:
-{body}"""
+## Subject:
+{subject}
+
+## Body:
+{body}
+"""
