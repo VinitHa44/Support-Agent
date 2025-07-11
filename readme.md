@@ -232,7 +232,8 @@ python -m system.gmail.email_polling_daemon
 
 ## 📚 Approach Documentation
 
-[Approach Documentation](https://supreme-eel-fa5.notion.site/Approach-Documentation-22dba7d69da58011a253c9cbd71947cd?source=copy_link)
+[Approach Documentation](https://supreme-eel-fa5.notion.site/Approach-Documentation-22dba7d69da58011a253c9cbd71947cd?source=copy_link) 
+[Demo Video](https://drive.google.com/file/d/1ToetKlKeCj6NGI7NvMofbhUh0wjxNv4n/view?usp=sharing)
 
 <div align="center">
   <strong>Built with ❤️ by the team Rocket Support Agent</strong>
